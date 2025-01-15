@@ -22,7 +22,7 @@ const modalOsnapOpen = ref(false);
 const currentTreasuryIndex = ref<number | null>(null);
 const currentTreasury = ref<TreasuryWallet>(clone(treasuryObj));
 const hasOsnapPlugin = computed(() => {
-  return Object.keys(props.space.plugins).includes('oSnap');
+  return Object.keys(form.value.plugins).includes('oSnap');
 });
 const isOsnapEnabledOnCurrentTreasury = ref(false);
 
@@ -95,13 +95,13 @@ function handleCloseConfigureOsnapModal() {
       />
     </div>
 
-    <BaseButton
+    <TuneButton
       :disabled="isViewOnly"
       class="block w-full"
       @click="handleAddTreasury"
     >
       {{ $t('settings.treasuries.add') }}
-    </BaseButton>
+    </TuneButton>
 
     <MessageWarningTestnet context="Treasury" :error="error" />
 

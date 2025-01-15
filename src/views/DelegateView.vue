@@ -1,6 +1,6 @@
-<script setup>
+<script setup lang="ts">
 import { debouncedWatch } from '@vueuse/core';
-import { isAddress } from '@ethersproject/address';
+import { getAddress, isAddress } from '@ethersproject/address';
 import networks from '@snapshot-labs/snapshot.js/src/networks.json';
 import {
   getScores,
@@ -23,15 +23,16 @@ const currentId = ref('');
 const currentDelegate = ref('');
 const loaded = ref(false);
 const delegatesLoading = ref(false);
-const delegates = ref([]);
-const delegatesWithScore = ref([]);
-const delegators = ref([]);
+const delegates = ref<any[]>([]);
+const delegatesWithScore = ref<any[]>([]);
+const delegators = ref<any[]>([]);
 const specifySpaceChecked = ref(false);
-const space = ref({});
+const space = ref();
 const form = ref({
-  address: route.params.to || '',
-  id: route.params.key || ''
+  address: (route.params.to as string) || '',
+  id: (route.params.key as string) || ''
 });
+const delegationLoadingError = ref(false);
 
 const { profiles, loadProfiles } = useProfiles();
 
@@ -44,11 +45,11 @@ const isEnsOwnedByWeb3Account = computed(() =>
 
 const validateSpaceInput = computed(() => {
   if (space.value === null) return t('delegate.noValidSpaceId');
-  return false;
+  return '';
 });
 
 const validateToInput = computed(() => {
-  if (form.value.address === '') return false;
+  if (form.value.address === '') return '';
   const address = form.value.address;
   if (!isValidEnsDomain(address) && !isAddress(address)) {
     if (address.includes('.'))
@@ -60,7 +61,7 @@ const validateToInput = computed(() => {
   if (address.toLowerCase() === web3Account.value.toLowerCase())
     return t('delegate.delegateToSelf');
   if (isEnsOwnedByWeb3Account.value) return t('delegate.delegateToSelfAddress');
-  return false;
+  return '';
 });
 
 watch(
@@ -97,6 +98,7 @@ const getDelegationsAndDelegatesLoading = ref(false);
 async function getDelegationsAndDelegates() {
   if (web3Account.value) {
     try {
+      delegationLoadingError.value = false;
       getDelegationsAndDelegatesLoading.value = true;
       const [delegatesObj, delegatorsObj] = await Promise.all([
         getDelegates(networkKey.value, web3Account.value),
@@ -108,6 +110,7 @@ async function getDelegationsAndDelegates() {
       delegates.value = [];
       delegators.value = [];
       console.log(error);
+      delegationLoadingError.value = true;
     } finally {
       getDelegationsAndDelegatesLoading.value = false;
     }
@@ -118,15 +121,25 @@ async function getDelegationsAndDelegates() {
   }
 }
 
+const delegationStrategies = [
+  'delegation',
+  'erc20-balance-of-delegation',
+  'delegation-with-cap',
+  'delegation-with-overrides',
+  'with-delegation',
+  'erc20-balance-of-delegation-with-delegation'
+];
+
 async function getDelegatesWithScore() {
-  const delegationStrategy = space.value.strategies.filter(
-    strategy => strategy.name === 'delegation'
+  const delegationStrategy = space.value.strategies.filter(strategy =>
+    delegationStrategies.includes(strategy.name)
   );
   if (delegationStrategy.length === 0) return;
 
+  delegationLoadingError.value = false;
   delegatesLoading.value = true;
   try {
-    const delegations = await getDelegatesBySpace(
+    const delegations: any = await getDelegatesBySpace(
       space.value.network,
       space.value.id,
       'latest'
@@ -134,9 +147,17 @@ async function getDelegatesWithScore() {
 
     const uniqueDelegators = Array.from(
       new Set(delegations.map(d => d.delegate))
-    ).map(delegate => {
-      return delegations.find(a => a.delegate === delegate);
-    });
+    )
+      .map(delegate => {
+        return delegations.find(a => a.delegate === delegate);
+      })
+      .map(delegation => {
+        return {
+          ...delegation,
+          delegate: getAddress(delegation.delegate),
+          delegator: getAddress(delegation.delegator)
+        };
+      });
 
     const delegatesAddresses = uniqueDelegators.map(d => d.delegate);
 
@@ -150,11 +171,13 @@ async function getDelegatesWithScore() {
     );
 
     uniqueDelegators.forEach(delegate => {
-      const delegationScore = scores[0];
-      Object.entries(delegationScore).forEach(([address, score]) => {
-        if (address === delegate.delegate) {
-          delegate.score = score;
-        }
+      delegate.score = 0;
+      scores.forEach(delegationScore => {
+        Object.entries(delegationScore).forEach(([address, score]) => {
+          if (address === delegate.delegate) {
+            delegate.score += score;
+          }
+        });
       });
     });
 
@@ -166,6 +189,7 @@ async function getDelegatesWithScore() {
     delegatesLoading.value = false;
   } catch (e) {
     delegatesLoading.value = false;
+    delegationLoadingError.value = true;
     console.log(e);
     return e;
   }
@@ -285,8 +309,8 @@ onMounted(async () => {
           <div
             v-for="(delegate, i) in delegates"
             :key="i"
-            :style="i === 0 && 'border: 0 !important;'"
             class="flex border-t px-4 py-3"
+            :class="{ '!border-0': i === 0 }"
           >
             <BaseUser
               :address="delegate.delegate"
@@ -313,7 +337,7 @@ onMounted(async () => {
           <div
             v-for="(delegator, i) in delegators"
             :key="i"
-            :style="i === 0 && 'border: 0 !important;'"
+            :class="{ '!border-0': i === 0 }"
             class="flex border-t px-4 py-3"
           >
             <BaseUser
@@ -336,13 +360,13 @@ onMounted(async () => {
           <div
             v-for="(delegate, i) in delegatesWithScore"
             :key="i"
-            :style="i === 0 && 'border: 0 !important;'"
+            :class="{ '!border-0': i === 0 }"
             class="flex border-t px-4 py-3"
           >
             <BaseUser
               :profile="profiles[delegate.delegate]"
-              :address="delegate.delegate"
               :space="{ network: networkKey }"
+              :address="delegate.delegate"
               class="w-[160px]"
             />
             <div
@@ -356,8 +380,16 @@ onMounted(async () => {
               "
             />
           </div>
+
           <div
-            v-if="!delegatesLoading && delegatesWithScore.length < 1"
+            v-if="delegationLoadingError"
+            class="mx-4 flex items-center py-3 text-red"
+          >
+            <BaseIcon name="warning" class="mr-1" /> Error while retrieving the
+            delegates list
+          </div>
+          <div
+            v-else-if="!delegatesLoading && delegatesWithScore.length < 1"
             class="mx-4 flex items-center py-3"
           >
             {{ $tc('delegate.noDelegatesFoundFor', [space.id]) }}
@@ -366,8 +398,8 @@ onMounted(async () => {
       </div>
     </template>
     <template v-if="networkSupportsDelegate" #sidebar-right>
-      <BaseBlock>
-        <BaseButton
+      <BaseBlock class="mt-4 lg:mt-0">
+        <TuneButton
           :disabled="!isValidForm && !!web3Account"
           :loading="delegationLoading"
           class="block w-full"
@@ -375,11 +407,14 @@ onMounted(async () => {
           @click="web3Account ? handleSubmit() : (modalAccountOpen = true)"
         >
           {{ $t('confirm') }}
-        </BaseButton>
+        </TuneButton>
       </BaseBlock>
     </template>
   </TheLayout>
-  <teleport v-if="networkSupportsDelegate" to="#modal">
+  <teleport
+    v-if="networkSupportsDelegate && profiles[currentDelegate]"
+    to="#modal"
+  >
     <ModalRevokeDelegate
       v-if="loaded"
       :id="currentId"

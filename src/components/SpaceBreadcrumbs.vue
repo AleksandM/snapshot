@@ -1,31 +1,38 @@
 <script setup lang="ts">
-import { ExtendedSpace } from '@/helpers/interfaces';
+import { ExtendedSpace, Proposal } from '@/helpers/interfaces';
 import { shorten } from '@/helpers/utils';
 
-const props = defineProps<{ space: ExtendedSpace }>();
+const props = defineProps<{ space: ExtendedSpace; proposal?: Proposal }>();
 
 const route = useRoute();
+const { domain } = useApp();
 
 const pages = computed(() => {
   let pages: any = [];
   const spaceRoute = `/${props.space.id}`;
   const basePages = [
-    { name: props.space.name, to: spaceRoute, current: false }
+    { name: domain ? 'Home' : props.space.name, to: spaceRoute, current: false }
   ];
 
   if (route.name === 'spaceProposal') {
     const id = route.params.id as string;
     pages = [
       ...basePages,
-      { name: id, to: `${spaceRoute}/proposal/${id}`, current: true }
+      {
+        id: 'proposal-title',
+        name: props.proposal?.title,
+        to: `${spaceRoute}/proposal/${id}`,
+        current: true
+      }
     ];
   }
 
   if (route.name === 'spaceDelegate') {
     const delegate = route.params.address as string;
     pages = [
+      ...basePages,
       {
-        name: props.space.name,
+        name: 'Delegates',
         to: `${spaceRoute}/delegates`,
         current: false
       },
@@ -37,6 +44,19 @@ const pages = computed(() => {
     ];
   }
 
+  if (route.name === 'spaceBoost') {
+    const id = route.params.proposalId as string;
+    pages = [
+      ...basePages,
+      {
+        name: props.proposal?.title,
+        to: `${spaceRoute}/proposal/${id}`,
+        current: false
+      },
+      { name: 'New boost', current: true }
+    ];
+  }
+
   pages = pages.filter((page: any) => page.name);
 
   return pages;
@@ -44,5 +64,8 @@ const pages = computed(() => {
 </script>
 
 <template>
-  <BaseBreadcrumbs :pages="pages" />
+  <BaseBreadcrumbs
+    :pages="pages"
+    class="px-[20px] md:px-4 -mt-1 pb-[16px] lg:pb-[20px]"
+  />
 </template>

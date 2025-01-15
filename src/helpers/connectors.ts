@@ -9,10 +9,17 @@ const connectors = {
     network: '1',
     options: {
       projectId: 'e6454bd61aba40b786e866a69bd4c5c6',
-      chains: [1],
-      optionalChains: [4, 5, 10, 42, 56, 100, 137, 246, 42161, 73799],
-      methods: ['eth_sendTransaction', 'personal_sign', 'eth_signTypedData_v4'],
-      optionalMethods: ['eth_accounts'],
+      chains: [],
+      optionalChains: [
+        1, 4, 5, 10, 42, 56, 100, 137, 246, 250, 4002, 1088, 42161, 73799,
+        11155111
+      ],
+      optionalMethods: [
+        'eth_sendTransaction',
+        'personal_sign',
+        'eth_accounts',
+        'eth_signTypedData_v4'
+      ],
       rpcMap: {
         '1': `${import.meta.env.VITE_BROVIDER_URL}/1`,
         '4': `${import.meta.env.VITE_BROVIDER_URL}/4`,
@@ -24,7 +31,8 @@ const connectors = {
         '137': `${import.meta.env.VITE_BROVIDER_URL}/137`,
         '246': `${import.meta.env.VITE_BROVIDER_URL}/246`,
         '42161': `${import.meta.env.VITE_BROVIDER_URL}/42161`,
-        '73799': `${import.meta.env.VITE_BROVIDER_URL}/73799`
+        '73799': `${import.meta.env.VITE_BROVIDER_URL}/73799`,
+        '11155111': `${import.meta.env.VITE_BROVIDER_URL}/11155111`
       },
       showQrModal: true
     },
@@ -40,7 +48,8 @@ const connectors = {
       chainId: 1,
       ethJsonrpcUrl: `${import.meta.env.VITE_BROVIDER_URL}/1`
     },
-    icon: 'ipfs://QmbJKEaeMz6qR3DmJSTxtYtrZeQPptVfnnYK72QBsvAw5q'
+    icon: 'ipfs://QmbJKEaeMz6qR3DmJSTxtYtrZeQPptVfnnYK72QBsvAw5q',
+    hidden: false
   },
   portis: {
     id: 'portis',

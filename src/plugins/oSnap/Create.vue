@@ -1,24 +1,17 @@
 <script setup lang="ts">
-import { ExtendedSpace, TreasuryWallet } from '@/helpers/interfaces';
-import { formatUnits } from '@ethersproject/units';
+import { ExtendedSpace } from '@/helpers/interfaces';
 import { cloneDeep } from 'lodash';
-import SelectSafe from './components/Input/SelectSafe.vue';
-import TransactionBuilder from './components/TransactionBuilder/TransactionBuilder.vue';
 import {
-  BalanceResponse,
   GnosisSafe,
-  NFT,
   Network,
   OsnapPluginData,
-  Token,
-  Transaction
+  Transaction,
+  nonNullable
 } from './types';
-import {
-  getGnosisSafeBalances,
-  getGnosisSafeCollectibles,
-  getIsOsnapEnabled,
-  getModuleAddressForTreasury
-} from './utils';
+import { getIsOsnapEnabled, getModuleAddressForTreasury } from './utils';
+import CreateSafe from './CreateSafe.vue';
+import { toChecksumAddress } from '@/helpers/utils';
+import OsnapMarketingWidget from './components/OsnapMarketingWidget.vue';
 
 const props = defineProps<{
   space: ExtendedSpace;
@@ -35,266 +28,171 @@ const emit = defineEmits<{
 }>();
 
 const newPluginData = ref<OsnapPluginData>({
-  safe: null
+  safes: null
 });
 
-const safes = ref<GnosisSafe[]>([]);
-const tokens = ref<Token[]>([]);
-const collectables = ref<NFT[]>([]);
+const updateSafes = (safes: GnosisSafe[]) => {
+  newPluginData.value = { safes };
+  emit('update', { key: 'oSnap', form: newPluginData.value });
+};
 
-function addTransaction(transaction: Transaction) {
-  if (newPluginData.value.safe === null) return;
-  newPluginData.value.safe.transactions.push(transaction);
-  update(newPluginData.value);
-}
+const allSafes = ref<GnosisSafe[]>([]);
+const configuredSafes = computed(() => newPluginData.value.safes ?? []);
 
-function removeTransaction(transactionIndex: number) {
-  if (!newPluginData.value.safe) return;
-
-  newPluginData.value.safe.transactions.splice(transactionIndex, 1);
-  update(newPluginData.value);
-}
-
-function updateTransaction(transaction: Transaction, transactionIndex: number) {
-  if (!newPluginData.value.safe) return;
-
-  newPluginData.value.safe.transactions[transactionIndex] = transaction;
-  update(newPluginData.value);
-}
-
-async function fetchTokens(url: string): Promise<Token[]> {
-  try {
-    const response = await fetch(url);
-    const data = await response.json();
-    return data.verifiedTokens?.tokens || data.tokens || [];
-  } catch {
-    return [];
-  }
-}
-
-// todo: wire up and use these balances to enrich details in the ui, e.g. 'your safe does not have enough funds for this transaction'
-async function fetchBalances(network: Network, safeAddress: string) {
-  if (!safeAddress) {
-    return [];
-  }
-
-  try {
-    const balances = await getGnosisSafeBalances(network, safeAddress);
-
-    const uniswapTokensPromise = fetchTokens(
-      'https://gateway.ipfs.io/ipns/tokens.uniswap.org'
+const unconfiguredSafes = computed<GnosisSafe[]>(() => {
+  if (newPluginData.value?.safes?.length && configuredSafes.value.length) {
+    return allSafes.value.filter(safe =>
+      !!findSafe(safe, configuredSafes.value) ? false : true
     );
-    const snapshotTokensPromise = fetchTokens(
-      `${import.meta.env.VITE_SIDEKICK_URL}/api/moderation?list=verifiedTokens`
-    );
-
-    const tokensLists = await Promise.all([
-      uniswapTokensPromise,
-      snapshotTokensPromise
-    ]);
-    const tokens = tokensLists.flat();
-
-    return enhanceTokensWithBalances(balances, tokens);
-  } catch (e) {
-    console.warn('Error fetching balances');
-    return [];
   }
-}
+  return allSafes.value;
+});
 
-function enhanceTokensWithBalances(
-  balances: Partial<BalanceResponse>[],
-  tokens: Token[]
-) {
-  console.log({ balances, tokens });
-  return balances
-    .filter(
-      (balance): balance is BalanceResponse =>
-        !!balance.token && !!balance.tokenAddress && !!balance.balance
-    )
-    .map(balance => enhanceTokenWithBalance(balance, tokens))
-    .sort((a, b) => {
-      if (a.verified && b.verified) return 0;
-      if (a.verified) return -1;
-      return 1;
-    });
-}
-
-// gets token balances and also determines if the token is verified
-function enhanceTokenWithBalance(
-  balance: BalanceResponse,
-  tokens: Token[]
-): Token {
-  const verifiedToken = getVerifiedToken(balance.tokenAddress, tokens);
-  return {
-    ...balance.token,
-    address: balance.tokenAddress,
-    balance: balance.balance
-      ? formatUnits(balance.balance, balance.token.decimals)
-      : '0',
-    verified: !!verifiedToken,
-    chainId: verifiedToken ? verifiedToken.chainId : undefined
-  };
-}
-
-function getVerifiedToken(tokenAddress: string, tokens: Token[]) {
-  return tokens.find(
-    token => token.address.toLowerCase() === tokenAddress.toLowerCase()
+function safeEqual(safe1: GnosisSafe, safe2: GnosisSafe): boolean {
+  return (
+    safe1.safeAddress === safe2.safeAddress && safe1.network === safe1.network
   );
 }
 
-async function fetchCollectibles(network: Network, gnosisSafeAddress: string) {
-  try {
-    const response = await getGnosisSafeCollectibles(
-      network,
-      gnosisSafeAddress
-    );
-    console.log({ response });
-    return response.results;
-  } catch (error) {
-    console.warn('Error fetching collectibles');
-  }
-  return [];
+function findSafe(safeToFind: GnosisSafe, from: GnosisSafe[]) {
+  return from.length
+    ? from.find(safe => safeEqual(safe, safeToFind))
+    : undefined;
 }
 
 // maps over the treasuries and creates a safe for each one
 // only returns safes that have oSnap enabled
 async function createOsnapEnabledSafes() {
-  const treasuriesWithOsnapEnabled = (
-    await Promise.all(
-      props.space.treasuries.map(async treasury => {
-        const isOsnapEnabled = await getIsOsnapEnabled(
-          treasury.network as Network,
-          treasury.address
-        );
-        return isOsnapEnabled ? treasury : null;
-      })
-    )
-  ).filter(treasury => treasury !== null) as TreasuryWallet[];
+  const treasuryPromises = await Promise.allSettled(
+    props.space.treasuries.map(async treasury => {
+      const isOsnapEnabled = await getIsOsnapEnabled(
+        treasury.network as Network,
+        treasury.address
+      );
+      return isOsnapEnabled ? treasury : null;
+    })
+  );
 
-  const safes: GnosisSafe[] = await Promise.all(
+  const treasuriesWithOsnapEnabled = treasuryPromises
+    .map(res => (res.status === 'fulfilled' ? res.value : null))
+    .filter(nonNullable);
+
+  const safePromises = await Promise.allSettled(
     treasuriesWithOsnapEnabled.map(async treasury => {
       const moduleAddress = await getModuleAddressForTreasury(
         treasury.network as Network,
         treasury.address
       );
-      return {
-        safeName: treasury.name,
-        safeAddress: treasury.address,
-        network: treasury.network as Network,
-        transactions: [] as Transaction[],
-        moduleAddress
-      };
+      return moduleAddress
+        ? {
+            safeName: treasury.name,
+            safeAddress: toChecksumAddress(treasury.address),
+            network: treasury.network as Network,
+            transactions: [] as Transaction[],
+            moduleAddress
+          }
+        : null;
     })
   );
+
+  const safes = safePromises
+    .map(res => (res.status === 'fulfilled' ? res.value : null))
+    .filter(nonNullable);
 
   return safes;
 }
 
-// when changing safes, we create a whole new object and replace it
-function updateSafe(safe: GnosisSafe) {
-  newPluginData.value.safe = cloneDeep(safe);
-  update(newPluginData.value);
+function addSafeToConfigure(safe: GnosisSafe) {
+  updateSafes([...(newPluginData.value.safes ?? []), safe]);
 }
 
-const update = (newPluginData: OsnapPluginData) => {
-  emit('update', { key: 'oSnap', form: newPluginData });
-};
+function addNewSafe() {
+  addSafeToConfigure(unconfiguredSafes.value[0]);
+}
 
-watch(newPluginData, async () => {
-  if (!newPluginData.value.safe?.safeAddress) return;
-  tokens.value = await fetchBalances(
-    newPluginData.value.safe.network,
-    newPluginData.value.safe.safeAddress
-  );
-  collectables.value = await fetchCollectibles(
-    newPluginData.value.safe.network,
-    newPluginData.value.safe.safeAddress
-  );
-});
+function removeSafe(safeIndex: number) {
+  const copy = [...configuredSafes.value];
+  copy.splice(safeIndex, 1);
+  updateSafes(copy);
+}
+
+function updateSafe(safe: GnosisSafe, safeIndex: number) {
+  const copy = [...configuredSafes.value];
+  copy[safeIndex] = safe;
+  updateSafes(copy);
+}
 
 onMounted(async () => {
   isLoading.value = true;
-  safes.value = await createOsnapEnabledSafes();
-  newPluginData.value.safe = safes.value[0];
-  tokens.value = await fetchBalances(
-    newPluginData.value.safe.network,
-    newPluginData.value.safe.safeAddress
-  );
-  collectables.value = await fetchCollectibles(
-    newPluginData.value.safe.network,
-    newPluginData.value.safe.safeAddress
-  );
-  update(newPluginData.value);
+  allSafes.value = await createOsnapEnabledSafes();
+  const initialSafe = cloneDeep(allSafes.value[0]);
+  updateSafes([initialSafe]);
   isLoading.value = false;
 });
 </script>
 
 <template>
-  <template v-if="hasLegacyPluginInstalled">
-    <div class="rounded-2xl border p-4 text-md">
-      <h2 class="mb-2">Warning: Legacy plugin detected</h2>
-      <p class="mb-2">
-        Using the oSnap plugin while the SafeSnap plugin is still installed on
-        your place will cause unexpected behavior.
+  <div class="rounded-2xl border border-skin-border relative">
+    <div v-if="!space.treasuries.length" class="rounded-2xl border p-4 text-md">
+      <h2>Warning: no treasuries</h2>
+      <p>
+        You have installed the oSnap plugin, but you don't have any treasuries.
       </p>
-      <p class="font-bold">
-        Please remove the SafeSnap plugin before using the oSnap plugin.
+      <p>
+        Please add a Safe as a treasury and enable oSnap on it to use the oSnap
+        plugin.
       </p>
     </div>
-  </template>
-  <template v-else>
-    <div v-if="isLoading" class="grid min-h-[180px] place-items-center">
+    <div
+      v-else-if="hasLegacyPluginInstalled"
+      class="rounded-2xl border p-4 text-md"
+    >
+      <h2 class="mb-2">Warning: Multiple oSnap enabled plugins detected</h2>
+      <p class="mb-2">
+        For best experience using oSnap, please remove the SafeSnap plugin from
+        your space.
+      </p>
+    </div>
+
+    <div v-else-if="isLoading" class="grid min-h-[180px] place-items-center">
       <h2 class="text-center">
         Loading oSnap Safes <LoadingSpinner class="ml-2 inline" big />
       </h2>
     </div>
-    <div v-else class="rounded-2xl border p-4">
-      <template v-if="space.treasuries.length === 0">
-        <h2>Warning: no treasuries</h2>
-        <p>
-          You have installed the oSnap plugin, but you don't have any
-          treasuries.
-        </p>
-        <p>
-          Please add a Safe as a treasury and enable oSnap on it to use the
-          oSnap plugin.
-        </p>
-      </template>
-      <template v-else-if="safes.length === 0">
-        <h2>Warning: no oSnap safes found</h2>
-        <p>
-          You have installed the oSnap plugin, but you don't have any oSnap
-          safes.
-        </p>
-        <p>
-          Please add a Safe as a treasury and enable oSnap on it to use the
-          oSnap plugin.
-        </p>
-      </template>
-      <template v-else>
-        <h2 class="text-md">Add oSnap transactions</h2>
-        <h3 class="text-base">Pick a safe</h3>
-        <SelectSafe
-          :safes="safes"
-          :selectedSafe="newPluginData.safe"
-          @updateSafe="updateSafe($event)"
-        />
-        <div class="mt-4 border-b last:border-b-0">
-          <TransactionBuilder
-            v-if="!!newPluginData.safe"
-            :space="space"
-            :safe-address="newPluginData.safe.safeAddress"
-            :module-address="newPluginData.safe.moduleAddress"
-            :tokens="tokens"
-            :collectables="collectables"
-            :network="newPluginData.safe.network"
-            :transactions="newPluginData.safe.transactions"
-            @add-transaction="addTransaction"
-            @remove-transaction="removeTransaction"
-            @update-transaction="updateTransaction"
-          />
-        </div>
-      </template>
+    <div v-else-if="!allSafes.length">
+      <h2>Warning: no oSnap safes found</h2>
+      <p>
+        You have installed the oSnap plugin, but you don't have any oSnap safes.
+      </p>
+      <p>
+        Please add a Safe as a treasury and enable oSnap on it to use the oSnap
+        plugin.
+      </p>
     </div>
-  </template>
+    <div
+      v-else-if="!newPluginData.safes?.length"
+      class="rounded-2xl border p-4 text-md"
+    >
+      <h4>Add treasuries to start building</h4>
+    </div>
+    <template v-else>
+      <CreateSafe
+        v-for="(safe, i) in newPluginData.safes"
+        :class="{ 'border-t border-skin-border': i !== 0 }"
+        :key="`${safe.network}:${safe.safeAddress}`"
+        :safe="safe"
+        :all-safes="allSafes"
+        :unconfigured-safes="unconfiguredSafes"
+        @remove-safe="() => removeSafe(i)"
+        @update-safe="safe => updateSafe(safe, i)"
+      />
+    </template>
+    <OsnapMarketingWidget class="absolute z-2 top-[-16px] right-[16px]" />
+  </div>
+  <TuneButton
+    v-if="unconfiguredSafes.length"
+    class="mt-4 w-full"
+    @click="addNewSafe"
+    >Add treasury +</TuneButton
+  >
 </template>

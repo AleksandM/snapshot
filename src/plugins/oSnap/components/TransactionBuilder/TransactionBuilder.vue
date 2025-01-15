@@ -1,20 +1,21 @@
 <script setup lang="ts">
-import { ExtendedSpace, Proposal, Results } from '@/helpers/interfaces';
 import { shorten } from '@/helpers/utils';
-import { NFT, Network, Transaction as TTransaction, Token } from '../../types';
+import {
+  GnosisSafe,
+  NFT,
+  SafeImportTransaction,
+  Transaction as TTransaction,
+  Token
+} from '../../types';
 import { getSafeAppLink } from '../../utils';
 import Transaction from './Transaction.vue';
+import TenderlySimulation from './TenderlySimulation.vue';
+import TransactionImport from './TransactionImport.vue';
 
 const props = defineProps<{
-  safeAddress: string;
-  moduleAddress: string;
   tokens: Token[];
-  collectables: NFT[];
-  network: Network;
-  transactions: TTransaction[];
-  proposal?: Proposal;
-  space: ExtendedSpace;
-  results?: Results;
+  collectibles: NFT[];
+  safe: GnosisSafe;
 }>();
 
 const emit = defineEmits<{
@@ -24,8 +25,12 @@ const emit = defineEmits<{
 }>();
 
 const safeLink = computed(() =>
-  getSafeAppLink(props.network, props.safeAddress)
+  getSafeAppLink(props.safe.network, props.safe.safeAddress)
 );
+
+function addImportedTransactions(transactions: SafeImportTransaction[]) {
+  transactions.forEach(tx => emit('addTransaction', tx));
+}
 </script>
 
 <template>
@@ -36,37 +41,49 @@ const safeLink = computed(() =>
       class="ml-2 inline-flex font-normal text-skin-text"
       target="_blank"
     >
-      {{ shorten(safeAddress) }}
+      {{ shorten(safe.safeAddress) }}
       <i-ho-external-link class="ml-1" />
     </a>
   </p>
   <p class="my-2">
     <strong>Module address</strong
     ><span class="ml-2 inline-block break-all">{{
-      shorten(moduleAddress)
+      shorten(safe.moduleAddress)
     }}</span>
   </p>
   <p class="my-2">
     <strong>Number of transactions</strong
-    ><span class="ml-2 inline-block">{{ transactions.length }}</span>
+    ><span class="ml-2 inline-block">{{ safe.transactions.length }}</span>
+    <TransactionImport
+      @update:imported-transactions="addImportedTransactions"
+      :safe="props.safe"
+      :network="safe.network"
+    />
   </p>
   <div class="text-center">
     <Transaction
-      v-for="(transaction, index) in transactions"
+      v-for="(transaction, index) in safe.transactions"
       :key="index"
       :transaction="transaction"
       :transaction-index="index"
-      :safe-address="safeAddress"
-      :module-address="moduleAddress"
+      :safe-address="safe.safeAddress"
+      :module-address="safe.moduleAddress"
       :tokens="tokens"
-      :collectables="collectables"
-      :network="props.network"
+      :collectables="collectibles"
+      :network="safe.network"
       @update-transaction="(...args) => emit('updateTransaction', ...args)"
       @remove-transaction="(...args) => emit('removeTransaction', ...args)"
     />
+    <TenderlySimulation
+      v-if="safe.transactions.length"
+      :transactions="safe.transactions"
+      :safe="props.safe"
+      :network="safe.network"
+      class="mt-4"
+    />
   </div>
 
-  <BaseButton
+  <TuneButton
     class="mt-4 w-full"
     @click="
       emit('addTransaction', {
@@ -79,5 +96,5 @@ const safeLink = computed(() =>
     "
   >
     Add transaction +
-  </BaseButton>
+  </TuneButton>
 </template>

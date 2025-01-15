@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { openProfile } from '@/helpers/utils';
+
 const props = defineProps<{
   address: string;
 }>();
@@ -6,30 +8,14 @@ const props = defineProps<{
 const emit = defineEmits(['switchWallet']);
 const { domain } = useApp();
 const { logout } = useWeb3();
+const { modalEmailOpen } = useModal();
 const router = useRouter();
-const { userState, loadEmailSubscriptions } = useEmailSubscription();
-
-const showModalEmail = ref(false);
-
-onMounted(loadEmailSubscriptions);
-watch(showModalEmail, () => {
-  if (!showModalEmail.value) {
-    loadEmailSubscriptions();
-  }
-});
 
 function handleAction(e) {
-  if (e === 'viewProfile')
-    // Link to profile page, if on custom domain then the link is external
-    return domain
-      ? window.open(`https://snapshot.org/#/profile/${props.address}`, '_blank')
-      : router.push({
-          name: 'profileActivity',
-          params: { address: props.address }
-        });
+  if (e === 'viewProfile') return openProfile(props.address, domain, router);
   if (e === 'switchWallet') return emit('switchWallet');
   if (e === 'subscribeEmail') {
-    showModalEmail.value = true;
+    modalEmailOpen.value = true;
     return true;
   }
 
@@ -90,20 +76,6 @@ function handleAction(e) {
   </div>
 
   <teleport to="#modal">
-    <ModalEmailSubscription
-      v-if="userState === 'NOT_SUBSCRIBED'"
-      :open="showModalEmail"
-      @close="showModalEmail = false"
-    />
-    <ModalEmailResend
-      v-else-if="userState === 'UNVERIFIED'"
-      :open="showModalEmail"
-      @close="showModalEmail = false"
-    />
-    <ModalEmailManagement
-      v-else-if="userState === 'VERIFIED'"
-      :open="showModalEmail"
-      @close="showModalEmail = false"
-    />
+    <ModalEmail :open="modalEmailOpen" @close="modalEmailOpen = false" />
   </teleport>
 </template>

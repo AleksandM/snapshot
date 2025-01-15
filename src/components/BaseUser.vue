@@ -5,12 +5,13 @@ const { domain } = useApp();
 
 const props = defineProps<{
   address: string;
-  space?: ExtendedSpace;
+  space?: Partial<ExtendedSpace>;
   proposal?: Proposal;
   profile?: Profile;
   hideAvatar?: boolean;
   hideUsername?: boolean;
   widthClass?: string;
+  textClass?: string;
 }>();
 
 const { getUsername } = useUsername();
@@ -31,6 +32,7 @@ const spaceMembers = computed(() => {
     :profile="profile"
     :proposal="proposal"
     :space="space"
+    class="flex"
   >
     <BaseLink
       :link="
@@ -47,10 +49,15 @@ const spaceMembers = computed(() => {
         <span
           v-if="!hideUsername"
           class="w-full cursor-pointer truncate text-skin-link"
+          :class="textClass"
         >
           {{ getUsername(address, profile) }}
         </span>
-        <BaseBadge :address="address" :members="spaceMembers" />
+        <BaseBadge
+          v-if="getUsername(address, profile) !== 'You'"
+          :address="address"
+          :members="spaceMembers"
+        />
       </div>
     </BaseLink>
   </PopoverHoverProfile>

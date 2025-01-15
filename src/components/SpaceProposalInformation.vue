@@ -18,7 +18,10 @@ const symbols = computed((): string[] =>
 </script>
 
 <template>
-  <BaseBlock :title="$t('information')">
+  <TuneBlock>
+    <template #header>
+      <TuneBlockHeader :title="$t('information')" />
+    </template>
     <div class="space-y-1">
       <div>
         <b>{{ $t('strategies') }}</b>
@@ -31,13 +34,7 @@ const symbols = computed((): string[] =>
             :key="symbol"
             class="flex"
           >
-            <span
-              v-tippy="{
-                content: symbol
-              }"
-            >
-              <AvatarSpace :space="space" :symbol-index="symbolIndex" />
-            </span>
+            <AvatarSpace :space="space" :symbol-index="symbolIndex" />
             <span v-show="symbolIndex !== symbols.length - 1" class="ml-1" />
           </span>
         </span>
@@ -95,7 +92,7 @@ const symbols = computed((): string[] =>
         </BaseLink>
       </div>
     </div>
-  </BaseBlock>
+  </TuneBlock>
   <teleport to="#modal">
     <ModalStrategies
       :open="isModalStrategiesOpen"

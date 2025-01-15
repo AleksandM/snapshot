@@ -4,6 +4,7 @@ import { BigNumber } from '@ethersproject/bignumber';
 import networks from '@snapshot-labs/snapshot.js/src/networks.json';
 import voting from '@snapshot-labs/snapshot.js/src/voting';
 import { getUrl } from '@snapshot-labs/snapshot.js/src/utils';
+import { getAddress } from '@ethersproject/address';
 
 export function shortenAddress(str = '') {
   return `${str.slice(0, 6)}...${str.slice(str.length - 4)}`;
@@ -94,6 +95,15 @@ export function explorerUrl(network, str: string, type = 'address'): string {
   return `${networks[network].explorer.url}/${type}/${str}`;
 }
 
+export function openProfile(address: string, domain: string, router: any) {
+  return domain
+    ? window.open(`https://snapshot.org/#/profile/${address}`, '_blank')
+    : router.push({
+        name: 'profileActivity',
+        params: { address: address }
+      });
+}
+
 export function calcFromSeconds(value, unit) {
   if (unit === 'm') return Math.floor(value / 60);
   if (unit === 'h') return Math.floor(value / (60 * 60));
@@ -181,4 +191,16 @@ export function isSnapshotUrl(url: string) {
   }
 
   return false;
+}
+
+export function toChecksumAddress(address: string) {
+  try {
+    return getAddress(address.toLowerCase());
+  } catch (e) {
+    return address;
+  }
+}
+
+export function addressEqual(address1: string, address2: string) {
+  return address1.toLowerCase() === address2.toLowerCase();
 }

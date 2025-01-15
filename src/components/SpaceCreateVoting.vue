@@ -3,6 +3,7 @@ import { ExtendedSpace } from '@/helpers/interfaces';
 import draggable from 'vuedraggable';
 import SpaceCreateLegacyOsnap from './SpaceCreateLegacyOsnap.vue';
 import SpaceCreateOsnap from './SpaceCreateOsnap.vue';
+import { BOOST_ENABLED_VOTING_TYPES } from '@/helpers/constants';
 
 const props = defineProps<{
   space: ExtendedSpace;
@@ -119,6 +120,15 @@ defineEmits<{
         "
         @update:type="value => (form.type = value)"
       />
+      <template v-if="space.boost.enabled">
+        <BaseMessage
+          v-if="!BOOST_ENABLED_VOTING_TYPES.includes(form.type)"
+          level="info"
+          class="mt-2 border bg-[--border-color-subtle] p-3 rounded-xl"
+        >
+          Note that Boost is not available for this voting type.
+        </BaseMessage>
+      </template>
 
       <h4 class="mb-1 mt-3" v-text="$t('create.choices')" />
       <div class="flex">
@@ -156,7 +166,7 @@ defineEmits<{
                 </template>
                 <template #info>
                   <span
-                    class="hidden text-xs text-skin-text group-focus-within:block"
+                    class="hidden text-xs text-skin-text whitespace-nowrap group-focus-within:block"
                   >
                     {{ `${element.text.length}/32` }}
                   </span>

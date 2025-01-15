@@ -1,5 +1,6 @@
 import { BigNumber } from '@ethersproject/bignumber';
 import { Fragment, JsonFragment } from '@ethersproject/abi';
+import { DelegationTypes } from '@/helpers/delegationV2';
 
 export interface Strategy {
   id: string;
@@ -17,6 +18,7 @@ interface StrategyExample {
   network: string;
   addresses: string[];
   snapshot: number;
+  space?: string;
 }
 
 interface StrategySchema {
@@ -109,6 +111,7 @@ export interface Space {
   name: string;
   avatar: string;
   verified: boolean;
+  turbo: boolean;
   activeProposals: number;
   followersCount: number;
   flagged: boolean;
@@ -121,6 +124,7 @@ export interface RankedSpace {
   name: string;
   avatar: string;
   verified: boolean;
+  turbo: boolean;
   rank: number;
   categories: string[];
   activeProposals: number;
@@ -167,19 +171,26 @@ export interface ExtendedSpace {
   verified: boolean;
   flagged: boolean;
   hibernated: boolean;
+  turbo: boolean;
+  boost: {
+    enabled: boolean;
+    bribeEnabled: boolean;
+  };
   voting: {
     delay: number | null;
     hideAbstain: boolean;
     period: number | null;
     quorum: number | null;
+    quorumType: 'default' | 'rejection';
     type: string | null;
     privacy: string | null;
   };
 }
 
 export interface DelegatesConfig {
-  delegationType: string;
+  delegationType: DelegationTypes;
   delegationContract: string;
+  delegationNetwork: string;
   delegationApi: string;
 }
 export interface SpaceValidation {
@@ -200,6 +211,7 @@ export interface ProposalSpace {
   avatar: string;
   symbol: string;
   verified: boolean;
+  turbo: boolean;
 }
 
 export interface Proposal {
@@ -221,6 +233,7 @@ export interface Proposal {
   validation: VoteValidation;
   discussion: string;
   quorum: number;
+  quorumType: 'default' | 'rejection';
   scores: number[];
   scores_state: string;
   scores_total: number;

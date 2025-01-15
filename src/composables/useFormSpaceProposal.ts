@@ -2,12 +2,14 @@ import { useStorage } from '@vueuse/core';
 import { clone } from '@snapshot-labs/snapshot.js/src/utils';
 import schemas from '@snapshot-labs/snapshot.js/src/schemas';
 import { validateForm } from '@/helpers/validation';
+import { OsnapPluginData } from '@/plugins/oSnap/types';
 
 interface ProposalForm {
   name: string;
   body: string;
   discussion: string;
   choices: { key: number; text: string }[];
+  labels: string[];
   start: number;
   end: number;
   snapshot: number;
@@ -15,6 +17,7 @@ interface ProposalForm {
   metadata: {
     plugins: {
       safeSnap?: { valid: boolean };
+      oSnap?: OsnapPluginData;
     };
   };
 }
@@ -27,6 +30,7 @@ const EMPTY_PROPOSAL: ProposalForm = {
     { key: 0, text: '' },
     { key: 1, text: '' }
   ],
+  labels: [],
   start: parseInt((Date.now() / 1e3).toFixed()),
   end: 0,
   snapshot: 0,
@@ -51,13 +55,14 @@ const userSelectedDateStart = ref(false);
 const userSelectedDateEnd = ref(false);
 const sourceProposalLoaded = ref(false);
 
-export function useFormSpaceProposal() {
+export function useFormSpaceProposal({ spaceType = 'default' } = {}) {
   const route = useRoute();
 
   const formDraft = useStorage<{
     name: string;
     body: string;
     choices: { key: number; text: string }[];
+    labels: string[];
     isBodySet: boolean;
   }>(`snapshot.proposal.${route.params.key}`, clone(EMPTY_PROPOSAL_DRAFT));
 
@@ -72,7 +77,7 @@ export function useFormSpaceProposal() {
   }
 
   const validationErrors = computed(() =>
-    validateForm(schemas.proposal, form.value)
+    validateForm(schemas.proposal, form.value, { spaceType })
   );
 
   const isValid = computed(() => {

@@ -27,6 +27,7 @@ const emit = defineEmits(['select']);
 <template>
   <Menu as="div" class="inline-block h-full text-left">
     <Float
+      portal
       enter="transition ease-out duration-100"
       enter-from="transform opacity-0 scale-95"
       enter-to="transform opacity-100 scale-100"
@@ -39,16 +40,16 @@ const emit = defineEmits(['select']);
       :flip="16"
       :z-index="50"
     >
-      <MenuButton class="h-full" as="template">
+      <MenuButton as="template">
         <slot v-if="$slots.button" name="button" />
 
-        <BaseButton v-else class="flex items-center">
+        <TuneButton v-else class="flex items-center">
           {{ selected }}
           <i-ho-chevron-down
-            class="-mr-1 ml-1 text-xs text-skin-text"
+            class="-mr-1 ml-1 text-xs text-skin-link"
             aria-hidden="true"
           />
-        </BaseButton>
+        </TuneButton>
       </MenuButton>
 
       <MenuItems

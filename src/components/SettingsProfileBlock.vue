@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import schemas from '@snapshot-labs/snapshot.js/src/schemas';
-import categories from '@/helpers/categories.json';
+import { SPACE_CATEGORIES } from '@/helpers/constants';
 
 const props = defineProps<{
   context: 'setup' | 'settings';
@@ -8,7 +8,6 @@ const props = defineProps<{
 }>();
 
 const { form, validationErrors, addRef } = useFormSpaceSettings(props.context);
-const { env } = useApp();
 
 const avatarNotReactive = ref(form.value.avatar);
 </script>
@@ -24,7 +23,7 @@ const avatarNotReactive = ref(form.value.avatar);
                 {{ $t('settings.avatar') }}
               </LabelInput>
               <InputUploadAvatar
-                :is-view-only="isViewOnly || env === 'demo'"
+                :is-view-only="isViewOnly"
                 class="h-[80px]"
                 @image-uploaded="url => (form.avatar = url)"
                 @image-remove="() => (form.avatar = '')"
@@ -44,11 +43,11 @@ const avatarNotReactive = ref(form.value.avatar);
                     <AvatarOverlayEdit
                       :loading="uploading"
                       :avatar="form?.avatar"
-                      :is-view-only="isViewOnly || env === 'demo'"
+                      :is-view-only="isViewOnly"
                     />
                     <div
                       :class="{
-                        'cursor-not-allowed': isViewOnly || env === 'demo'
+                        'cursor-not-allowed': isViewOnly
                       }"
                       class="absolute bottom-[2px] right-0 rounded-full bg-skin-heading p-1"
                     >
@@ -86,7 +85,7 @@ const avatarNotReactive = ref(form.value.avatar);
             :placeholder="$t('settings.categories.select')"
             :label="$t(`settings.categories.label`)"
             :items="
-              categories.map(category => ({
+              SPACE_CATEGORIES.map(category => ({
                 value: category,
                 name: $t(`explore.categories.${category}`)
               }))

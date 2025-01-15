@@ -4,20 +4,36 @@ import { mustBeEthereumAddress } from '../../utils';
 const props = defineProps<{
   modelValue: string;
   label: string;
+  error?: string;
   disabled?: boolean;
 }>();
+
 const emit = defineEmits<{
   'update:modelValue': [value: string];
 }>();
 
 const input = ref('');
 const dirty = ref(false);
-const error = computed(() => {
-  if (!dirty.value) return '';
-  if (input.value === '') return 'Address is required';
-  if (!mustBeEthereumAddress(input.value)) return 'Invalid address';
-  return '';
-});
+const error = ref('');
+
+const validate = () => {
+  if (!dirty.value) {
+    error.value = '';
+    return;
+  }
+  if (input.value === '') {
+    error.value = 'Address is required';
+    return;
+  }
+
+  if (!mustBeEthereumAddress(input.value)) {
+    error.value = 'Invalid address';
+    return;
+  }
+  error.value = '';
+};
+
+watch(input, validate);
 
 watch(
   () => props.modelValue,
@@ -35,15 +51,21 @@ onMounted(() => {
 const handleInput = () => {
   emit('update:modelValue', input.value);
 };
+
+const handleBlur = () => {
+  dirty.value = true;
+  validate();
+};
 </script>
 
 <template>
   <UiInput
     v-model="input"
     :disabled="disabled"
-    :error="error !== '' && error"
+    placeholder="0x123...abc"
+    :error="props.error ?? (error || '')"
     @input="handleInput()"
-    @blur="dirty = true"
+    @blur="handleBlur"
   >
     <template v-if="label" #label>{{ label }}</template>
   </UiInput>

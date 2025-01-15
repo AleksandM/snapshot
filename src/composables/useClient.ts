@@ -6,7 +6,6 @@ export function useClient() {
   const { notify } = useFlashNotification();
   const { notifyModal } = useModalNotification();
   const { isGnosisSafe } = useGnosis();
-  const { mixpanel } = useMixpanel();
   const { web3 } = useWeb3();
   const auth = getInstance();
   const route = useRoute();
@@ -28,7 +27,7 @@ export function useClient() {
     try {
       return await sendEIP712(space, type, payload);
     } catch (e: any) {
-      errorNotification(e?.error_description || '');
+      errorNotification(e?.error_description || e?.message || '');
       return e;
     } finally {
       isSending.value = false;
@@ -46,49 +45,34 @@ export function useClient() {
       plugins = payload.metadata.plugins;
 
     if (type === 'create-proposal') {
-      const receipt = await client.proposal(auth.web3, web3.value.account, {
+      return client.proposal(auth.web3, web3.value.account, {
         space: space.id,
         type: payload.type,
         title: payload.name,
         body: payload.body,
         discussion: payload.discussion,
         choices: payload.choices,
+        labels: [],
         start: payload.start,
         end: payload.end,
         snapshot: payload.snapshot,
         plugins: JSON.stringify(plugins),
         app: DEFINED_APP
       });
-
-      mixpanel.track('Propose', {
-        space: space.id
-      });
-
-      return receipt;
     } else if (type === 'update-proposal') {
-      const receipt = await client.updateProposal(
-        auth.web3,
-        web3.value.account,
-        {
-          proposal: payload.id,
-          space: space.id,
-          type: payload.type,
-          title: payload.name,
-          body: payload.body,
-          discussion: payload.discussion,
-          choices: payload.choices,
-          plugins: JSON.stringify(plugins)
-        }
-      );
-
-      mixpanel.track('Update proposal', {
+      return client.updateProposal(auth.web3, web3.value.account, {
+        proposal: payload.id,
         space: space.id,
-        proposalId: payload.proposal.id
+        type: payload.type,
+        title: payload.name,
+        body: payload.body,
+        discussion: payload.discussion,
+        choices: payload.choices,
+        labels: payload.labels,
+        plugins: JSON.stringify(plugins)
       });
-
-      return receipt;
     } else if (type === 'vote') {
-      const receipt = await client.vote(auth.web3, web3.value.account, {
+      return client.vote(auth.web3, web3.value.account, {
         space: space.id,
         proposal: payload.proposal.id,
         type: payload.proposal.type,
@@ -97,74 +81,34 @@ export function useClient() {
         app: DEFINED_APP,
         reason: payload.reason
       });
-
-      mixpanel.track('Vote', {
-        space: space.id,
-        proposalId: payload.proposal.id
-      });
-
-      return receipt;
     } else if (type === 'delete-proposal') {
-      const receipt = await client.cancelProposal(
-        auth.web3,
-        web3.value.account,
-        {
-          space: space.id,
-          proposal: payload.proposal.id
-        }
-      );
-
-      mixpanel.track('Delete proposal', {
-        space: space.id,
-        proposalId: payload.proposal.id
-      });
-
-      return receipt;
-    } else if (type === 'settings') {
-      const receipt = await client.space(auth.web3, web3.value.account, {
-        space: space.id,
-        settings: JSON.stringify(payload)
-      });
-
-      mixpanel.track('Update space settings', {
-        space: space.id
-      });
-
-      return receipt;
-    } else if (type === 'delete-space') {
-      const receipt = await client.deleteSpace(auth.web3, web3.value.account, {
-        space: space.id
-      });
-
-      mixpanel.track('Delete space', {
-        space: space.id
-      });
-
-      return receipt;
-    } else if (type === 'set-statement') {
-      const receipt = await client.statement(auth.web3, web3.value.account, {
-        space: space.id,
-        about: payload.about,
-        statement: payload.statement
-      });
-
-      mixpanel.track('Set statement', {
-        space: space.id
-      });
-
-      return receipt;
-    } else if (type === 'flag-proposal') {
-      const receipt = await client.flagProposal(auth.web3, web3.value.account, {
+      return client.cancelProposal(auth.web3, web3.value.account, {
         space: space.id,
         proposal: payload.proposal.id
       });
-
-      mixpanel.track('Flag proposal', {
+    } else if (type === 'settings') {
+      return client.space(auth.web3, web3.value.account, {
         space: space.id,
-        proposalId: payload.proposal.id
+        settings: JSON.stringify(payload)
       });
-
-      return receipt;
+    } else if (type === 'delete-space') {
+      return client.deleteSpace(auth.web3, web3.value.account, {
+        space: space.id
+      });
+    } else if (type === 'set-statement') {
+      return client.statement(auth.web3, web3.value.account, {
+        space: space.id,
+        about: payload.about,
+        statement: payload.statement,
+        discourse: payload.discourse,
+        network: payload.network,
+        status: payload.status
+      });
+    } else if (type === 'flag-proposal') {
+      return client.flagProposal(auth.web3, web3.value.account, {
+        space: space.id,
+        proposal: payload.proposal.id
+      });
     }
   }
 

@@ -2,6 +2,7 @@ import { BigNumber } from '@ethersproject/bignumber';
 import { Contract, Event } from '@ethersproject/contracts';
 import networks from '@snapshot-labs/snapshot.js/src/networks.json';
 import { safePrefixes, transactionTypes } from './constants';
+import { FunctionFragment } from '@ethersproject/abi';
 
 /**
  * Represents details about the chains that snapshot supports as described in the `networks` json file.
@@ -28,7 +29,7 @@ export type SafeNetworkPrefixes = typeof safePrefixes;
  * One of the supported network prefixes as defined in EIP-3770 used by Safe apps.
  * @see SafeNetworkPrefixes
  */
-export type SafeNetworkPrefix = SafeNetworkPrefixes[Network];
+export type SafeNetworkPrefix = SafeNetworkPrefixes[keyof SafeNetworkPrefixes];
 
 /**
  * Represents the four different types of transactions that oSnap supports.
@@ -77,7 +78,8 @@ export type Transaction =
   | RawTransaction
   | ContractInteractionTransaction
   | TransferNftTransaction
-  | TransferFundsTransaction;
+  | TransferFundsTransaction
+  | SafeImportTransaction;
 
 /**
  * Represents the fields that all transactions share.
@@ -91,6 +93,23 @@ export type BaseTransaction = {
   value: string;
   data: string;
   formatted: OptimisticGovernorTransaction;
+  isValid?: boolean;
+};
+/**
+ * Represents a transaction that interacts with an arbitrary contract from safe json file import.
+ *
+ * @field `abi` field is the ABI of the contract that the transaction interacts with, represented as a JSON string.
+ *
+ * @field `methodName` field is the name of the method on the contract that the transaction calls.
+ *
+ * @field `parameters` field is an array of strings that represent the parameters that the method takes. NOTE: some methods take arrays or tuples as arguments, so some of these strings in the array may be JSON formatted arrays or tuples.
+ */
+
+export type SafeImportTransaction = BaseTransaction & {
+  type: 'safeImport';
+  abi?: string; // represents partial ABI only
+  method?: FunctionFragment;
+  parameters?: { [key: string]: string };
 };
 
 /**
@@ -113,6 +132,7 @@ export type ContractInteractionTransaction = BaseTransaction & {
   type: 'contractInteraction';
   abi?: string;
   methodName?: string;
+  method?: FunctionFragment;
   parameters?: string[];
 };
 
@@ -234,11 +254,19 @@ export type GnosisSafe = {
  *
  * Holds one object with this shape per proposal created. This is the shape of the data that is persisted by the plugin.
  *
- * `safe` is null when first creating a plugin, but is then immediately populated once the user picks a safe.
+ * `safes` is null when first creating a plugin, but is then immediately populated once the user picks a safe.
  *
- * @field `safe` field is the safe that the plugin is currently working with.
+ * @field `safes` field is the array of safes that the plugin is currently working with.
  */
-export type OsnapPluginData = {
+export type OsnapPluginData = MultiSafe;
+
+export type LegacyOsnapPluginData = SingleSafe;
+
+type MultiSafe = {
+  safes: GnosisSafe[] | null;
+};
+
+type SingleSafe = {
   safe: GnosisSafe | null;
 };
 
@@ -405,3 +433,136 @@ export type OGProposalState =
   | (AssertionTransactionDetails & {
       status: 'transactions-executed';
     });
+
+interface ResultUrl {
+  url: string; // This is the URL to the simulation result page (public or private).
+  public: boolean; // This is false if the project is not publicly accessible.
+}
+
+export interface TenderlySimulationResult {
+  id: string;
+  status: boolean; // True if the simulation succeeded, false if it reverted.
+  gasUsed: number;
+  resultUrl: ResultUrl;
+}
+
+export type ErrorWithMessage = InstanceType<typeof Error> & {
+  message: string;
+};
+
+// predicate for better error handling
+export function isErrorWithMessage(error: unknown): error is ErrorWithMessage {
+  return error !== null && typeof error === 'object' && 'message' in error;
+}
+
+export const Status = {
+  IDLE: 'IDLE',
+  LOADING: 'LOADING',
+  SUCCESS: 'SUCCESS',
+  FAIL: 'FAIL',
+  ERROR: 'ERROR'
+} as const;
+
+export type Status = keyof typeof Status;
+
+export type SpaceConfigResponse =
+  | {
+      automaticExecution: true;
+    }
+  | {
+      automaticExecution: false;
+      rules: boolean;
+      bondToken: boolean;
+      bondAmount: boolean;
+    };
+
+export namespace GnosisSafe {
+  export interface ProposedTransaction {
+    id: number;
+    contractInterface: ContractInterface | null;
+    description: {
+      to: string;
+      value: string;
+      customTransactionData?: string;
+      contractMethod?: ContractMethod;
+      contractFieldsValues?: Record<string, string>;
+      contractMethodIndex?: string;
+      nativeCurrencySymbol?: string;
+      networkPrefix?: string;
+    };
+    raw: { to: string; value: string; data: string };
+  }
+
+  export interface ContractInterface {
+    methods: ContractMethod[];
+  }
+
+  export interface Batch {
+    id: number | string;
+    name: string;
+    transactions: ProposedTransaction[];
+  }
+
+  export interface BatchFile {
+    version: string;
+    chainId: string;
+    createdAt: number;
+    meta: BatchFileMeta;
+    transactions: BatchTransaction[];
+  }
+
+  export interface BatchFileMeta {
+    txBuilderVersion?: string;
+    checksum?: string;
+    createdFromSafeAddress?: string;
+    createdFromOwnerAddress?: string;
+    name: string;
+    description?: string;
+  }
+
+  export interface BatchTransaction {
+    to: string;
+    value: string;
+    data?: string;
+    contractMethod?: ContractMethod;
+    contractInputsValues?: { [key: string]: string };
+  }
+
+  export interface ContractMethod {
+    inputs: ContractInput[];
+    name: string;
+    payable: boolean;
+  }
+
+  export interface ContractInput {
+    internalType: string;
+    name: string;
+    type: string;
+    components?: ContractInput[];
+  }
+}
+
+export type InputTypes =
+  | 'bool'
+  | 'string'
+  | 'address'
+  | Integer
+  | 'bytes'
+  | 'bytes32';
+
+export type Integer = `int${number}` | `uint${number}`;
+
+export function isIntegerType(type: InputTypes): type is Integer {
+  return type.includes('int');
+}
+
+export function nonNullable<T>(value: T): value is NonNullable<T> {
+  return value !== null;
+}
+
+//  for backwards compatibility
+export function isLegacySingleSafe(
+  pluginData: LegacyOsnapPluginData | OsnapPluginData
+): pluginData is LegacyOsnapPluginData {
+  return 'safe' in pluginData;
+}

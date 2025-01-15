@@ -10,20 +10,24 @@
 
 [data-color-scheme='dark'] {
   color-scheme: dark;
-  --primary-color: #384aff;
+  --primary-color: #ffffff;
   --bg-color: #1c1b20;
   --text-color: #8b949e;
   --link-color: #ffffff;
   --heading-color: #ffffff;
-  --border-color: #2d2d2d;
+  --border-color: #343434;
   --header-bg: #1c1b20;
   --block-bg: transparent;
   --shadow-color: rgba(255, 255, 255, 0.036);
+  --border-color-soft: rgba(45, 45, 45, 0.8);
+  --border-color-subtle: rgba(45, 45, 45, 0.5);
+  --border-color-faint: rgba(45, 45, 45, 0.3);
+  --network-blocks: url('@/assets/images/blocks-dark.svg');
 }
 
 [data-color-scheme='light'] {
   color-scheme: light;
-  --primary-color: #384aff;
+  --primary-color: #000000;
   --bg-color: white;
   --text-color: #57606a;
   --link-color: #444444;
@@ -32,6 +36,10 @@
   --header-bg: white;
   --block-bg: transparent;
   --shadow-color: #0001;
+  --border-color-soft: rgb(224, 224, 224, 0.6);
+  --border-color-subtle: rgb(224, 224, 224, 0.32);
+  --border-color-faint: rgb(224, 224, 224, 0.12);
+  --network-blocks: url('@/assets/images/blocks-light.svg');
 }
 
 @layer base {
@@ -54,8 +62,36 @@
     src: url('../fonts/space-mono-v11-latin-700.woff2') format('woff2');
   }
 
+  @font-face {
+    font-family: 'Space Mono';
+    font-style: normal;
+    font-weight: 700;
+    src: url('../fonts/SpaceMono-Bold.woff2') format('woff2');
+  }
+
+  .mono {
+    font-size: 44px;
+    font-family: 'Space Mono', Helvetica, Arial, sans-serif;
+    letter-spacing: -1px;
+    font-weight: 700;
+    line-height: 1.1em;
+  }
+
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 16px;
+  }
+
   html {
     scrollbar-gutter: stable;
+    overflow: visible !important;
+  }
+
+  *,
+  ::before,
+  ::after {
+    @apply border-skin-border;
   }
 
   body {
@@ -130,7 +166,6 @@
   opacity: 0;
 }
 
-// TODO: Move this to BaseLink components
 a,
 .a {
   color: var(--link-color);
@@ -141,7 +176,6 @@ a,
   }
 }
 
-// TODO: Move this and ::placeholder to a new BaseInput component
 .input {
   @apply bg-transparent text-skin-link outline-none;
 }
@@ -149,18 +183,6 @@ a,
 ::placeholder {
   color: var(--text-color);
   opacity: 0.6 !important;
-}
-
-// TODO: Remove this and use border-skin-border in the templates. Tailwind has
-// dozens of modifiers (md:, sm:, hover: etc.) which would all need to be listed here.
-.border,
-.border-md,
-.border-lg,
-.border-b,
-.border-t,
-.border-r,
-.border-l {
-  @apply border-skin-border;
 }
 
 input[type='number']::-webkit-inner-spin-button,
@@ -226,4 +248,10 @@ input[type='number'] {
   .viewer-close {
     margin-right: 50px !important;
   }
+}
+
+.network-blocks {
+  background-repeat: repeat-x;
+  background-position: top -40px center;
+  background-image: var(--network-blocks);
 }

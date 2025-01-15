@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { getChoiceString } from '@/helpers/utils';
 import { ExtendedSpace, Proposal } from '@/helpers/interfaces';
+import { getSafeAppLink } from '@/plugins/oSnap/utils';
 
-const { shareVote, shareProposalTwitter, shareProposalHey } = useSharing();
-const { web3Account } = useWeb3();
-const { userState } = useEmailSubscription();
+const { shareVote, shareProposalX, shareProposalHey } = useSharing();
+const { web3, web3Account } = useWeb3();
+const { userState, loadEmailSubscriptions, initialized } =
+  useEmailSubscription();
 
 const props = defineProps<{
   open: boolean;
@@ -27,17 +29,23 @@ const imgPath = computed(() => {
     : '/stickers/hooray.png';
 });
 
-function share(shareTo: 'twitter' | 'hey') {
+function share(shareTo: 'x' | 'hey') {
   shareVote(shareTo, {
     space: props.space,
     proposal: props.proposal,
     choices: getChoiceString(props.proposal, props.selectedChoices)
   });
 }
+
+onMounted(() => {
+  if (!initialized.value) {
+    loadEmailSubscriptions();
+  }
+});
 </script>
 
 <template>
-  <BaseModal :open="open" max-height="550px" @close="emit('close')">
+  <TuneModal :open="open" max-height="550px" @close="emit('close')">
     <div class="flex flex-col justify-between p-4 md:h-auto">
       <div>
         <img
@@ -56,68 +64,69 @@ function share(shareTo: 'twitter' | 'hey') {
 
           <template v-else>
             <h3 v-text="$t('proposal.postVoteModal.defaultTitle')" />
-            <p class="italic" v-text="$t('proposal.postVoteModal.tips.1')" />
+            <p>Thank you for your participation!</p>
+            <p>Votes can be changed while the proposal is active.</p>
           </template>
         </div>
       </div>
     </div>
-    <template #footer>
-      <div class="space-y-2">
-        <BaseButton
-          class="flex !h-[42px] w-full items-center justify-center gap-2"
-          @click="
-            props.waitingForSigners
-              ? shareProposalTwitter(space, proposal)
-              : share('twitter')
+
+    <div class="space-y-2 p-3">
+      <TuneButton
+        class="flex !h-[42px] w-full items-center justify-center gap-2"
+        @click="
+          props.waitingForSigners ? shareProposalX(space, proposal) : share('x')
+        "
+      >
+        <i-s-x class="text-md" />
+        Share on X
+      </TuneButton>
+      <TuneButton
+        class="flex !h-[42px] w-full items-center justify-center gap-2"
+        @click="
+          props.waitingForSigners
+            ? shareProposalHey(space, proposal)
+            : share('hey')
+        "
+      >
+        <i-s-hey class="text-[#FB3A5D]" />
+        {{ $t('shareOnHey') }}
+      </TuneButton>
+
+      <TuneButton
+        v-if="userState !== 'VERIFIED' && initialized"
+        class="flex !h-[42px] w-full items-center justify-center gap-2"
+        @click="subscribeEmail"
+      >
+        <i-ho-mail class="text-skin-link" />
+        {{ $t('proposal.postVoteModal.subscribe') }}
+      </TuneButton>
+      <div v-if="props.waitingForSigners">
+        <BaseLink
+          :link="
+            getSafeAppLink(web3.network.chainId, web3Account, {
+              path: 'transactions/queue'
+            })
           "
+          hide-external-icon
         >
-          <i-s-twitter class="text-md text-[#1DA1F2]" />
-          {{ $t('shareOnTwitter') }}
-        </BaseButton>
-        <BaseButton
-          class="flex !h-[42px] w-full items-center justify-center gap-2"
-          @click="
-            props.waitingForSigners
-              ? shareProposalHey(space, proposal)
-              : share('hey')
-          "
-        >
-          <i-s-hey class="text-[#FB3A5D]" />
-          {{ $t('shareOnHey') }}
-        </BaseButton>
-
-        <BaseButton
-          v-if="userState !== 'VERIFIED'"
-          class="flex !h-[42px] w-full items-center justify-center gap-2"
-          @click="subscribeEmail"
-        >
-          <i-ho-mail class="text-skin-link" />
-          {{ $t('proposal.postVoteModal.subscribe') }}
-        </BaseButton>
-
-        <div v-if="props.waitingForSigners">
-          <BaseLink
-            :link="`https://gnosis-safe.io/app/eth:${web3Account}/transactions/queue`"
-            hide-external-icon
-          >
-            <BaseButton tabindex="-1" class="w-full">
-              <div class="flex flex-grow items-center justify-center gap-1">
-                {{ $t('proposal.postVoteModal.seeQueue') }}
-                <i-ho-external-link class="text-sm" />
-              </div>
-            </BaseButton>
-          </BaseLink>
-        </div>
-
-        <BaseButton
-          primary
-          class="!h-[42px] w-full"
-          data-testid="post-vote-modal-close"
-          @click="emit('close')"
-        >
-          {{ $t('close') }}
-        </BaseButton>
+          <TuneButton tabindex="-1" class="w-full">
+            <div class="flex flex-grow items-center justify-center gap-1">
+              {{ $t('proposal.postVoteModal.seeQueue') }}
+              <i-ho-external-link class="text-sm" />
+            </div>
+          </TuneButton>
+        </BaseLink>
       </div>
-    </template>
-  </BaseModal>
+
+      <TuneButton
+        primary
+        class="!h-[42px] w-full"
+        data-testid="post-vote-modal-close"
+        @click="emit('close')"
+      >
+        {{ $t('close') }}
+      </TuneButton>
+    </div>
+  </TuneModal>
 </template>

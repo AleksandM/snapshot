@@ -4,6 +4,7 @@ const props = defineProps<{
   placeholder?: string;
   modal?: boolean;
   focusOnMount?: boolean;
+  isDisabled?: boolean;
 }>();
 
 const emit = defineEmits(['update:modelValue']);
@@ -49,11 +50,13 @@ watch(
       autocorrect="off"
       autocapitalize="none"
       class="input w-full border-none"
+      :class="{ '!cursor-not-allowed': isDisabled }"
+      :disabled="isDisabled"
       @input="handleInput"
     />
     <i-ho-x-circle
       v-if="modelValue"
-      class="mr-[6px] flex-shrink-0 cursor-pointer text-[16px] text-skin-link"
+      class="mr-[6px] flex-shrink-0 cursor-pointer text-[16px] ml-3 text-skin-link"
       @click="clearInput"
     />
     <slot name="after" class="flex-shrink-0" />

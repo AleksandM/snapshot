@@ -9,8 +9,8 @@ import options from '@/helpers/auth';
 import VueTippy from 'vue-tippy';
 import VueViewer from 'v-viewer';
 import { apolloClient } from '@/helpers/apollo';
-import { initSentry } from '@/sentry';
-import { KNOWN_HOSTS } from '@/helpers/constants';
+// import { initSentry } from '@/sentry';
+import { KNOWN_DOMAINS, KNOWN_HOSTS } from '@/helpers/constants';
 import i18n from '@/helpers/i18n';
 import router from '@/router';
 import '@/assets/css/main.scss';
@@ -24,7 +24,11 @@ const parentUrl =
       ]
     : document.location.href;
 const parentHost = new URL(parentUrl).host;
-if (window !== window.parent && !KNOWN_HOSTS.includes(parentHost)) {
+if (
+  window !== window.parent &&
+  !KNOWN_HOSTS.includes(parentHost) &&
+  !KNOWN_DOMAINS.includes(parentHost.split('.').slice(-2).join('.'))
+) {
   document.documentElement.style.display = 'none';
   throw new Error(`Unknown host: ${parentHost}`);
 }
@@ -38,7 +42,7 @@ const app = createApp({
   render: () => h(App)
 });
 
-initSentry(app, router);
+// initSentry(app, router);
 
 app
   .use(head)

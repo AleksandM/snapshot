@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useInfiniteScroll } from '@vueuse/core';
 
 useMeta({
@@ -37,7 +37,7 @@ const resultsStr = computed(() => {
 
 const createLink = computed(() => {
   if (isStrategies.value) return 'https://docs.snapshot.org/strategies/create';
-  if (isNetworks.value) return 'https://docs.snapshot.org/networks';
+  if (isNetworks.value) return 'https://snapshot.box/#/network';
   if (isPlugins.value) return 'https://docs.snapshot.org/plugins/create';
   return 'https://docs.snapshot.org/strategies/create';
 });
@@ -55,7 +55,7 @@ const { env } = useApp();
 const onlyMainnetNetworks = n => (env === 'production' ? !n.testnet : true);
 
 const items = computed(() => {
-  const q = route.query.q || '';
+  const q = (route.query.q as string) || '';
   if (isStrategies.value) return filterStrategies(q);
   if (isNetworks.value) return filterNetworks(q).filter(onlyMainnetNetworks);
   if (isPlugins.value) return filterPlugins(q);
@@ -113,9 +113,9 @@ useInfiniteScroll(
           class="ml-3 hidden md:block"
           hide-external-icon
         >
-          <BaseButton tabindex="-1">
+          <TuneButton tabindex="-1">
             {{ buttonStr }}
-          </BaseButton>
+          </TuneButton>
         </BaseLink>
       </div>
     </BaseContainer>

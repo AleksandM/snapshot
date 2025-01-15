@@ -18,7 +18,9 @@ export function useFollowSpace(spaceId: any = {}) {
   const loadingFollow = ref('');
 
   const followingSpaces = computed(() =>
-    following.value.map((f: any) => f.space.id)
+    Array.isArray(following.value)
+      ? following.value.map((f: any) => f.space.id)
+      : []
   );
 
   const isFollowing = computed(() =>
@@ -61,12 +63,15 @@ export function useFollowSpace(spaceId: any = {}) {
 
   async function follow(space) {
     loadingFollow.value = spaceId;
+
     try {
       await checkAlias();
       if (!aliasWallet.value || !isValidAlias.value) {
         await setAlias();
         follow(space);
       } else {
+        const network = process.env.VITE_ENV === 'production' ? 's' : 's-tn';
+
         if (isFollowing.value) {
           // Also unsubscribe to the notifications if the user leaves the space.
           if (isSubscribed.value) {
@@ -74,12 +79,14 @@ export function useFollowSpace(spaceId: any = {}) {
           }
           await client.unfollow(aliasWallet.value, aliasWallet.value.address, {
             from: web3Account.value,
-            space
+            space,
+            network
           });
         } else {
           await client.follow(aliasWallet.value, aliasWallet.value.address, {
             from: web3Account.value,
-            space
+            space,
+            network
           });
         }
         await loadFollows();

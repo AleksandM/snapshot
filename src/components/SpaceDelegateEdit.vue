@@ -9,6 +9,9 @@ const props = defineProps<{
   statement: {
     about: string;
     statement: string;
+    discourse: string;
+    network: string;
+    status: string;
   };
   edited: boolean;
   saving: boolean;
@@ -71,16 +74,16 @@ async function handleClickSave() {
         You can always come back and edit your profile at any time.
 
         <TheActionbar break-point="md">
-          <div class="px-4 md:px-0">
-            <BaseButton
-              class="mt-3 w-full"
+          <div class="px-4 md:px-0 py-[16px] md:pb-0">
+            <TuneButton
+              class="w-full"
               :loading="saving"
               :disabled="!edited"
               primary
               @click="handleClickSave"
             >
               Save changes
-            </BaseButton>
+            </TuneButton>
           </div>
         </TheActionbar>
       </BaseBlock>

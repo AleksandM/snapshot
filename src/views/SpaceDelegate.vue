@@ -2,10 +2,16 @@
 import { ExtendedSpace } from '@/helpers/interfaces';
 import { useConfirmDialog } from '@vueuse/core';
 import { clone } from '@snapshot-labs/snapshot.js/src/utils';
+import { DelegatingTo } from '../helpers/delegationV2/types';
+import { DelegationTypes } from '@/helpers/delegationV2';
+import { getAddress } from '@ethersproject/address';
 
 const INITIAL_STATEMENT = {
   about: '',
-  statement: ''
+  statement: '',
+  discourse: '',
+  network: 'INACTIVE',
+  status: 's'
 };
 
 const props = defineProps<{
@@ -24,15 +30,20 @@ const {
   delegate,
   delegatesStats,
   isLoadingDelegate,
-  isLoadingDelegatingTo
+  isLoadingDelegatingTo,
+  hasDelegationPortal
 } = useDelegates(props.space);
-const { reloadStatement, getStatement, formatPercentageNumber } =
-  useStatement();
+const {
+  reloadStatement,
+  getStatement,
+  formatPercentageNumber,
+  loadingStatements
+} = useStatement();
 const { modalAccountOpen } = useModal();
 
 const showEdit = ref(false);
 const showDelegateModal = ref(false);
-const web3AccountDelegatingTo = ref('');
+const web3AccountDelegatingTo = ref<DelegatingTo | undefined>();
 const fetchedStatement = ref(INITIAL_STATEMENT);
 const statementForm = ref(INITIAL_STATEMENT);
 
@@ -51,13 +62,13 @@ const isLoggedUser = computed(() => {
 
 const showUndelegate = computed(() => {
   return (
-    web3AccountDelegatingTo.value?.toLowerCase() ===
+    web3AccountDelegatingTo.value?.[0]?.toLowerCase() ===
     address.value?.toLowerCase()
   );
 });
 
 const delegateStats = computed(() => {
-  return delegatesStats.value?.[address.value];
+  return delegatesStats.value?.[getAddress(address.value)];
 });
 
 const delegatorItems = computed(() => {
@@ -78,12 +89,12 @@ const delegatorItems = computed(() => {
     },
     {
       label: 'Proposals',
-      value: formatCompactNumber(delegateStats.value?.proposals.length || 0),
+      value: formatCompactNumber(delegateStats.value?.proposals || 0),
       tooltip: null
     },
     {
       label: 'Votes',
-      value: formatCompactNumber(delegateStats.value?.votes.length || 0),
+      value: formatCompactNumber(delegateStats.value?.votes || 0),
       tooltip: null
     }
   ];
@@ -113,6 +124,8 @@ async function handleReload() {
 async function init() {
   loadDelegatingTo();
   await loadDelegate(address.value);
+
+  await reloadStatement(props.space.id, address.value);
   statementForm.value = getStatement(address.value);
   fetchedStatement.value = getStatement(address.value);
 }
@@ -126,13 +139,17 @@ function handleClickDelegate() {
   showDelegateModal.value = true;
 }
 
-watch(address, init, {
-  immediate: true
-});
+watch(
+  address,
+  addr => {
+    showEdit.value = false;
 
-watch(address, () => {
-  showEdit.value = false;
-});
+    if (addr) init();
+  },
+  {
+    immediate: true
+  }
+);
 
 watch(web3Account, async () => {
   loadDelegatingTo();
@@ -155,10 +172,7 @@ onBeforeRouteLeave(async () => {
 
 <template>
   <div class="mb-[80px] md:mb-0">
-    <SpaceBreadcrumbs
-      :space="space"
-      class="mx-4 -mt-1 pb-[16px] lg:pb-[20px]"
-    />
+    <SpaceBreadcrumbs :space="space" />
 
     <BaseContainer v-if="isLoggedUser" class="pb-2 pt-3 lg:py-[20px]">
       <ButtonSwitch
@@ -192,7 +206,7 @@ onBeforeRouteLeave(async () => {
       <TheLayout v-else reverse class="pt-[12px]">
         <template #content-left>
           <div class="px-4 md:px-0">
-            <LoadingPage v-if="isLoadingDelegate" slim />
+            <LoadingPage v-if="isLoadingDelegate || loadingStatements" slim />
             <div v-else class="space-y-[40px]">
               <div>
                 <h3 class="mb-2 mt-0">About</h3>
@@ -226,7 +240,7 @@ onBeforeRouteLeave(async () => {
               <div>
                 <AvatarUser :address="address" size="40" />
               </div>
-              <div class="ml-2">
+              <div class="ml-2 truncate">
                 <ProfileName
                   :profile="getProfile(address)"
                   :address="address"
@@ -253,31 +267,39 @@ onBeforeRouteLeave(async () => {
                 </div>
               </div>
             </div>
-            <TheActionbar break-point="md">
-              <div class="flex h-full items-center px-[20px] md:px-0">
-                <BaseButton
+            <TheActionbar
+              v-if="
+                space.delegationPortal.delegationType !==
+                DelegationTypes.SPLIT_DELEGATION
+              "
+              break-point="md"
+            >
+              <div
+                class="flex h-full items-center px-[20px] py-[16px] md:px-0 md:pb-0"
+              >
+                <TuneButton
                   v-if="!showUndelegate"
-                  class="w-full md:mt-3"
+                  class="w-full"
                   primary
                   :loading="isLoadingDelegatingTo"
                   @click="handleClickDelegate"
                 >
                   {{ isLoggedUser ? 'Delegate to yourself' : 'Delegate' }}
-                </BaseButton>
+                </TuneButton>
 
                 <div
                   v-else
                   v-tippy="{ content: 'You can not un-delegate from yourself' }"
-                  class="w-full md:mt-3"
+                  class="w-full"
                 >
-                  <BaseButton
+                  <TuneButton
                     variant="danger"
                     class="w-full"
                     :disabled="isLoggedUser"
                     @click="showDelegateModal = true"
                   >
                     Un-delegate
-                  </BaseButton>
+                  </TuneButton>
                 </div>
               </div>
             </TheActionbar>
@@ -285,8 +307,9 @@ onBeforeRouteLeave(async () => {
         </template>
       </TheLayout>
     </div>
-    <Teleport to="body">
+    <Teleport to="#modal">
       <SpaceDelegatesDelegateModal
+        v-if="hasDelegationPortal"
         :open="showDelegateModal"
         :space="space"
         :address="showUndelegate ? web3Account : address"

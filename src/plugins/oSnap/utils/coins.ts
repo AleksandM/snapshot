@@ -1,4 +1,4 @@
-import { Network } from '../types';
+import { Network, Token } from '../types';
 
 export const ETHEREUM_COIN = {
   name: 'Ether',
@@ -43,19 +43,44 @@ const BNB_COIN = {
   logoUri:
     'https://safe-transaction-assets.safe.global/chains/56/currency_logo.png'
 } as const;
+const CORE_COIN = {
+  name: 'Core',
+  symbol: 'CORE',
+  address: 'main',
+  decimals: 18,
+  logoUri:
+    'https://cloudflare-ipfs.com/ipfs/bafkreigjv5yb7uhlrryzib7j2f73nnwqan2tmfnwjdu26vkk365fyesoiu'
+} as const;
+
+const OPTIMISM_COIN = {
+  name: 'OPTIMISM',
+  symbol: 'OP',
+  address: 'main',
+  decimals: 18,
+  logoUri:
+    'https://optimistic.etherscan.io/images/svg/brands/optimism.svg?v=24.3.2.1'
+} as const;
 
 export function getNativeAsset(network: Network) {
   switch (parseInt(network)) {
     case 137:
     case 80001:
       return MATIC_COIN;
+    case 10:
+      return OPTIMISM_COIN;
     case 100:
       return XDAI_COIN;
     case 246:
       return EWC_COIN;
     case 56:
       return BNB_COIN;
+    case 1116:
+      return CORE_COIN;
   }
 
   return ETHEREUM_COIN;
+}
+
+export function isNativeAsset(token: Token | undefined) {
+  return token ? token.address === 'main' : false;
 }

@@ -10,11 +10,13 @@ const DEFAULT_VOTE_VALIDATION = { name: 'any', params: {} };
 const DEFAULT_DELEGATION = {
   delegationType: 'compound-governor',
   delegationContract: '',
+  delegationNetwork: '1',
   delegationApi: ''
 };
 const EMPTY_SPACE_FORM = {
   strategies: [],
   categories: [],
+  labels: [],
   treasuries: [],
   admins: [],
   moderators: [],
@@ -32,6 +34,10 @@ const EMPTY_SPACE_FORM = {
     quorum: 0,
     type: '',
     privacy: ''
+  },
+  boost: {
+    enabled: true,
+    bribeEnabled: false
   },
   validation: clone(DEFAULT_PROPOSAL_VALIDATION),
   voteValidation: clone(DEFAULT_VOTE_VALIDATION),
@@ -59,7 +65,10 @@ const formSettings = ref(clone(EMPTY_SPACE_FORM));
 const initialFormState = ref(clone(EMPTY_SPACE_FORM));
 const inputRefs = ref<any[]>([]);
 
-export function useFormSpaceSettings(context: 'setup' | 'settings') {
+export function useFormSpaceSettings(
+  context: 'setup' | 'settings',
+  { spaceType = 'default' } = {}
+) {
   const { isSending } = useClient();
   const { isUploadingImage } = useImageUpload();
 
@@ -85,6 +94,9 @@ export function useFormSpaceSettings(context: 'setup' | 'settings') {
       !formData.delegationPortal.delegationApi
     ) {
       delete formData.delegationPortal;
+    }
+    if (formData.voting.quorumType === 'default') {
+      delete formData.voting.quorumType;
     }
     return formData;
   });
@@ -124,6 +136,7 @@ export function useFormSpaceSettings(context: 'setup' | 'settings') {
     delete formData.verified;
     delete formData.flagged;
     delete formData.hibernated;
+    delete formData.turbo;
 
     if (formData.filters.invalids) delete formData.filters.invalids;
   }
@@ -145,12 +158,14 @@ export function useFormSpaceSettings(context: 'setup' | 'settings') {
       period: formData.voting.period || undefined,
       type: formData.voting.type || undefined,
       quorum: formData.voting?.quorum || undefined,
+      quorumType: formData.voting.quorumType || 'default',
       privacy: formData.voting.privacy || undefined
     };
     formData.children = formData.children
       ? formData.children.map((child: any) => child.id)
       : [];
     formData.parent = formData.parent?.id || '';
+    formData.boost = formData.boost || { enabled: true, bribeEnabled: false };
   }
 
   function shouldUseAnyValidation(formData: any) {
@@ -192,7 +207,7 @@ export function useFormSpaceSettings(context: 'setup' | 'settings') {
   }
 
   const validationErrors = computed(() => {
-    const errors = validateForm(schemas.space, prunedForm.value);
+    const errors = validateForm(schemas.space, prunedForm.value, { spaceType });
 
     validateStrategies(errors);
     validateProposalValidation(errors);

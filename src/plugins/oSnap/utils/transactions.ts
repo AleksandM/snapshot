@@ -7,9 +7,12 @@ import {
   RawTransaction,
   Token,
   TransferFundsTransaction,
-  TransferNftTransaction
+  TransferNftTransaction,
+  SafeImportTransaction
 } from '../types';
-import { encodeMethodAndParams } from './abi';
+import { encodeMethodAndParams, encodeSafeMethodAndParams } from './abi';
+import { isAddress } from '@ethersproject/address';
+import { validateTransaction } from './validators';
 
 /**
  * Creates a formatted transaction for the Optimistic Governor to execute
@@ -45,7 +48,8 @@ export function createRawTransaction(params: {
   return {
     ...params,
     type,
-    formatted
+    formatted,
+    isValid: true
   };
 }
 
@@ -75,7 +79,8 @@ export function createTransferNftTransaction(params: {
     to,
     value,
     data,
-    formatted
+    formatted,
+    isValid: true
   };
 }
 
@@ -90,6 +95,9 @@ export function createTransferFundsTransaction(params: {
   token: Token;
   data: string;
 }): TransferFundsTransaction {
+  if (!(parseFloat(params.amount) > 0)) {
+    throw new Error('Amount invalid');
+  }
   const type = 'transferFunds';
   const isNativeToken = params.token.address === 'main';
   const data = isNativeToken ? '0x' : params.data;
@@ -108,7 +116,8 @@ export function createTransferFundsTransaction(params: {
     to,
     value,
     amount,
-    formatted
+    formatted,
+    isValid: true
   };
 }
 
@@ -126,22 +135,28 @@ export function createContractInteractionTransaction(params: {
   method: FunctionFragment;
   parameters: string[];
 }): ContractInteractionTransaction {
-  const type = 'contractInteraction';
-  const data = encodeMethodAndParams(
-    params.abi,
-    params.method,
-    params.parameters
-  );
-  const formatted = createFormattedOptimisticGovernorTransaction({
-    ...params,
-    data
-  });
-  return {
-    ...params,
-    data,
-    type,
-    formatted
-  };
+  try {
+    const type = 'contractInteraction';
+    const data = encodeMethodAndParams(
+      params.abi,
+      params.method,
+      params.parameters
+    );
+    const formatted = createFormattedOptimisticGovernorTransaction({
+      ...params,
+      data
+    });
+    return {
+      ...params,
+      data,
+      type,
+      formatted,
+      isValid: true
+    };
+  } catch (error) {
+    console.error(error);
+    throw new Error('Invalid function parameters');
+  }
 }
 
 export function parseAmount(input: string) {
@@ -149,9 +164,81 @@ export function parseAmount(input: string) {
 }
 
 export function parseValueInput(input: string) {
+  if (input === '') {
+    return parseAmount('0');
+  }
+  return parseAmount(input);
+}
+
+export function createSafeImportTransaction(
+  params: SafeImportTransaction
+): SafeImportTransaction {
   try {
-    return parseAmount(input);
-  } catch (e) {
-    return input;
+    // check "value" & "to"
+    if (!validateTransaction(params)) {
+      throw new Error('Invalid transaction');
+    }
+    const abi = params.method
+      ? JSON.stringify(Array(params.method))
+      : undefined;
+    // is native transfer funds
+    if (!params.method) {
+      const data = '0x';
+      const formatted = createFormattedOptimisticGovernorTransaction({
+        to: params.to,
+        value: params.value,
+        data
+      });
+      return {
+        ...params,
+        isValid: true,
+        abi,
+        formatted,
+        data
+      };
+    }
+    // is contract interaction with NO args
+    if (!params.parameters) {
+      const data = params?.data || '0x';
+      const formatted = createFormattedOptimisticGovernorTransaction({
+        to: params.to,
+        value: params.value,
+        data
+      });
+      return {
+        ...params,
+        isValid: true,
+
+        formatted,
+        data
+      };
+    }
+
+    // is contract interaction WITH args
+    // will throw if args are invalid
+    const encodedData =
+      params?.data ||
+      encodeSafeMethodAndParams(params.method, params.parameters) ||
+      '0x';
+
+    const formatted = createFormattedOptimisticGovernorTransaction({
+      to: params.to,
+      value: params.value,
+      data: encodedData
+    });
+
+    return {
+      ...params,
+      isValid: true,
+      abi,
+      formatted,
+      data: encodedData
+    };
+  } catch (error) {
+    console.error(error);
+    return {
+      ...params,
+      isValid: false
+    };
   }
 }

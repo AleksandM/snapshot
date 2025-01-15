@@ -46,6 +46,7 @@ export const PROPOSAL_QUERY = gql`
       body
       discussion
       choices
+      labels
       start
       end
       snapshot
@@ -56,6 +57,7 @@ export const PROPOSAL_QUERY = gql`
       network
       type
       quorum
+      quorumType
       symbol
       privacy
       validation {
@@ -123,6 +125,7 @@ export const PROPOSALS_QUERY = gql`
         avatar
         symbol
         verified
+        turbo
         plugins
       }
       scores_state
@@ -130,6 +133,7 @@ export const PROPOSALS_QUERY = gql`
       scores
       votes
       quorum
+      quorumType
       symbol
       flagged
     }
@@ -189,8 +193,10 @@ export const SUBSCRIPTIONS_QUERY = gql`
 `;
 
 export const ALIASES_QUERY = gql`
-  query Aliases($address: String!, $alias: String!) {
-    aliases(where: { address: $address, alias: $alias }) {
+  query Aliases($address: String!, $alias: String!, $created_gt: Int) {
+    aliases(
+      where: { address: $address, alias: $alias, created_gt: $created_gt }
+    ) {
       address
       alias
     }
@@ -202,9 +208,11 @@ export const ENS_DOMAINS_BY_ACCOUNT_QUERY = gql`
     account(id: $id) {
       domains {
         name
+        expiryDate
       }
       wrappedDomains {
         name
+        expiryDate
       }
     }
   }
@@ -382,6 +390,7 @@ export const SPACES_RANKING_QUERY = gql`
         avatar
         private
         verified
+        turbo
         categories
         rank
         activeProposals
@@ -404,6 +413,7 @@ export const SPACES_QUERY = gql`
       name
       avatar
       verified
+      turbo
       activeProposals
       followersCount
       terms
@@ -422,6 +432,9 @@ export const STATEMENTS_QUERY = gql`
       about
       ipfs
       id
+      discourse
+      network
+      status
     }
   }
 `;
@@ -448,11 +461,18 @@ export const SPACE_QUERY = gql`
       moderators
       members
       categories
+      labels {
+        id
+        name
+        description
+        color
+      }
       plugins
       followersCount
       template
       guidelines
       verified
+      turbo
       flagged
       hibernated
       parent {
@@ -478,6 +498,7 @@ export const SPACE_QUERY = gql`
         period
         type
         quorum
+        quorumType
         privacy
         hideAbstain
       }
@@ -501,6 +522,7 @@ export const SPACE_QUERY = gql`
       delegationPortal {
         delegationType
         delegationContract
+        delegationNetwork
         delegationApi
       }
       treasuries {
@@ -508,22 +530,22 @@ export const SPACE_QUERY = gql`
         address
         network
       }
+      boost {
+        enabled
+        bribeEnabled
+      }
     }
   }
 `;
 
-export const DELEGATE_VOTES_AND_PROPOSALS = gql`
-  query VotesAndProposals($delegates: [String]!, $space: String!) {
-    votes(first: 1000, where: { voter_in: $delegates, space: $space }) {
-      created
-      voter
-      choice
-      vp
-    }
-    proposals(first: 1000, where: { author_in: $delegates, space: $space }) {
-      created
-      author
-      title
+export const LEADERBOARD_QUERY = gql`
+  query Leaderboard($space: String!, $user_in: [String]) {
+    leaderboards(where: { space: $space, user_in: $user_in }) {
+      space
+      user
+      proposalsCount
+      votesCount
+      lastVote
     }
   }
 `;

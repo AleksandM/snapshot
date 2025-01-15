@@ -1,5 +1,4 @@
 import { createRouter, createWebHashHistory, RouteLocation } from 'vue-router';
-import { useMixpanel } from '@/composables/useMixpanel';
 
 import DelegateView from '@/views/DelegateView.vue';
 import ExploreView from '@/views/ExploreView.vue';
@@ -22,11 +21,12 @@ import SpaceAbout from '@/views/SpaceAbout.vue';
 import SpaceTreasury from '@/views/SpaceTreasury.vue';
 import SpaceDelegates from '@/views/SpaceDelegates.vue';
 import SpaceDelegate from '@/views/SpaceDelegate.vue';
+import SpaceBoost from '@/views/SpaceBoost.vue';
+import TermsView from '@/views/TermsView.vue';
 
 // The frontend shows all spaces or just a single one, when being accessed
 // through that space's custom domain.
 const { domain, domainAlias } = useApp();
-const { mixpanel } = useMixpanel();
 
 const routes: any[] = [];
 
@@ -48,7 +48,6 @@ const spaceRoutes = [
     name: 'spaceCreate',
     component: SpaceCreate
   },
-
   {
     path: 'about',
     name: 'spaceAbout',
@@ -73,6 +72,11 @@ const spaceRoutes = [
     path: 'delegate/:address?',
     name: 'spaceDelegate',
     component: SpaceDelegate
+  },
+  {
+    path: 'boost/:proposalId',
+    name: 'spaceBoost',
+    component: SpaceBoost
   }
 ];
 
@@ -144,6 +148,20 @@ if (domain) {
           to.params.key = to.params.key.toLowerCase();
         }
       }
+    },
+    {
+      path: '/network',
+      component: {
+        // To redirect existing links to snapshot.box
+        beforeRouteEnter() {
+          window.location.href = 'https://snapshot.box/#/network';
+        }
+      }
+    },
+    {
+      path: '/terms-and-conditions',
+      name: 'terms-and-conditions',
+      component: TermsView
     }
   );
 }
@@ -174,13 +192,6 @@ const router = createRouter({
 
     return { top: 0 };
   }
-});
-
-router.afterEach(to => {
-  mixpanel.track_pageview({
-    page_name: to.name,
-    page_path: to.path
-  });
 });
 
 export { routes };

@@ -1,6 +1,5 @@
-<script setup>
-const { domain } = useApp();
-const { init, isReady, showSidebar } = useApp();
+<script setup lang="ts">
+const { domain, init, isReady, showSidebar } = useApp();
 const route = useRoute();
 const { restorePendingTransactions } = useTxStatus();
 
@@ -42,7 +41,10 @@ onMounted(async () => {
           </KeepAlive>
         </router-view>
       </div>
-      <footer v-if="route.name === 'home'" class="mt-auto">
+      <footer
+        v-if="route.name === 'home' || route.name === 'terms-and-conditions'"
+        class="mt-auto"
+      >
         <TheFooter />
       </footer>
       <div id="action-bar" />

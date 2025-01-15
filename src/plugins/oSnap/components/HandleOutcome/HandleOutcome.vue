@@ -77,11 +77,7 @@ const hasSufficientBalance = computed(() => {
     return undefined;
   return userCollateralBalance.value.gte(ogModuleDetails.value.minimumBond);
 });
-const {
-  createPendingTransaction,
-  updatePendingTransaction,
-  removePendingTransaction
-} = useTxStatus();
+const { createPendingTransaction, removePendingTransaction } = useTxStatus();
 const { notify } = useFlashNotification();
 const { quorum } = useQuorum(props);
 
@@ -143,8 +139,14 @@ async function onApproveBond() {
     if (step.value) {
       txPendingId = createPendingTransaction(step.value.hash);
       await approvingBond.next();
-      notify('Successfully approved bond');
       await sleep(3e3);
+      notify('Successfully approved bond');
+      // update our knowledge of users approval
+      userCollateralAllowance.value = await getUserCollateralAllowance(
+        collateralDetails.value.erc20Contract,
+        web3.value.account,
+        props.moduleAddress
+      );
       await updateOgProposalState();
     }
   } catch (e) {
@@ -219,9 +221,7 @@ async function onExecuteProposal() {
 }
 
 const connectedToRightChain = computed(() => {
-  return (
-    Number(getInstance().provider.value?.chainId) === Number(props.network)
-  );
+  return Number(props.network) === Number(web3.value.network.chainId);
 });
 
 const networkName = computed(() => {
@@ -299,7 +299,7 @@ async function ensureRightNetwork(chainId: Network) {
   }
 }
 
-onMounted(async () => {
+async function loadActions() {
   collateralDetails.value = await getCollateralDetailsForProposal(
     provider,
     props.moduleAddress
@@ -320,6 +320,10 @@ onMounted(async () => {
     props.moduleAddress
   );
   await updateOgProposalState();
+}
+
+onMounted(async () => {
+  loadActions();
 });
 </script>
 

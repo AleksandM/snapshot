@@ -17,8 +17,8 @@
   "ticketWithAnyOrBasicErrorSetup": "Use of the ticket strategy requires setting a voting validation strategy. To continue go one step back and select the \"One person, one vote\" option. {article}",
   "missingProposalValidationError": "Proposal validation is required to prevent unauthorized proposals and spam. If you don't want proposal validation you can toggle only the \"Allow only authors to submit a proposal\" option.",
   "resultsCalculating": "Final results are being calculated. If you still see this message after a few minutes contact the space admin.",
-  "votingPowerFailedMessage": "Your voting power could not be calculated. This is often due to a misconfigured strategy or an unresponsive RPC node involved in the strategy. If the problem persists, consider contacting the space admin or our support team on {discord}",
-  "votingValidationFailedMessage": "We were not able to validate your eligibility to vote. This is often due to a misconfigured vote validation setting or an unresponsive RPC node. If the problem persists, consider contacting the space admin or our support team on {discord}",
+  "votingPowerFailedMessage": "Your voting power could not be calculated. This is often due to a misconfigured strategy or an unresponsive RPC node involved in the strategy. If the problem persists, consider contacting our support team on {help}",
+  "votingValidationFailedMessage": "We were not able to validate your eligibility to vote. This is often due to a misconfigured vote validation setting or an unresponsive RPC node. If the problem persists, consider contacting our support team on {help}",
   "getHelp": "Get help",
   "retry": "Retry",
   "currentResults": "Current results",
@@ -47,7 +47,7 @@
   "warningFlaggedProposal": "This proposal might contain scams, offensive material, or be malicious in nature. Please proceed with caution.",
   "warningFlaggedSpace": "This space might contain scams, offensive material, or be malicious in nature. Please proceed with caution.",
   "warningFlaggedActionShow": "Show",
-  "linkPreview": "This link will take you to {url}.</br> Are you sure you want to continue?",
+  "linkPreview": "This link will take you to {url}.</br> Be careful, this link could be malicious. Are you sure you want to continue? ",
   "version": "Version",
   "timeline": "Timeline",
   "ended": "ended",
@@ -179,7 +179,7 @@
   "newSpaceNotice": {
     "header": "Your space is live!",
     "mainText": "You can change how voting power is calculated via strategies in your {settings}. Changes to your settings will only affect new proposals, existing proposals can not be changed.",
-    "learnMore": "Learn more in the {documentation} or join Snapshot {discord} for help.",
+    "learnMore": "Learn more in the {documentation} or contact support on {help}.",
     "gotIt": "Got it!"
   },
   "errors": {
@@ -251,7 +251,7 @@
     },
     "delegateModal": {
       "title": "Delegate",
-      "sub": "You are about to delegate "
+      "sub": "You are about to delegate all of your voting power."
     },
     "profileModal": {
       "title": "Profile"
@@ -352,15 +352,15 @@
   "modalNotifications": {
     "wrong timestamp": {
       "title": "Wrong timestamp",
-      "message": "The message timestamp is not valid. Please check the clock on your device, make sure it is set to the correct date and time and try again.\n\n If you need further assistance, feel free to reach out to our support team on {discord}."
+      "message": "The message timestamp is not valid. Please check the clock on your device, make sure it is set to the correct date and time and try again.\n\n If you need further assistance, feel free to reach out to our support team on {help}."
     },
     "space with ticket requires voting validation": {
       "title": "Missing voting validation",
-      "message": "Your proposal cannot be submitted due to a missing voting validation rule required with the 'ticket' strategy. Please adjust your settings by either using another strategy or adding the required validation.\n\n If further assistance is needed, contact our support team on {discord}."
+      "message": "Your proposal cannot be submitted due to a missing voting validation rule required with the 'ticket' strategy. Please adjust your settings by either using another strategy or adding the required validation.\n\n If further assistance is needed, contact our support team on {help}."
     },
     "space missing proposal validation": {
       "title": "Missing proposal validation",
-      "message": "Your proposal cannot be submitted due to a missing proposal validation rule. To prevent unauthorized proposals and spam, add a validation rule in your space settings.\n\n For assistance, reach out to our support team on {discord}."
+      "message": "Your proposal cannot be submitted due to a missing proposal validation rule. To prevent unauthorized proposals and spam, add a validation rule in your space settings.\n\n For assistance, reach out to our support team on {help}."
     }
   },
   "modalTerms": {
@@ -372,7 +372,7 @@
   "settings": {
     "header": "Settings",
     "confirmLeaveMessage": " Do you really want to leave? You have unsaved changes that will be lost.",
-    "confirmDeleteSpace": " Do you really want to delete this space? This action cannot be undone and you will not be able to create a new space with the same ENS domain name.",
+    "confirmDeleteSpace": " Do you really want to delete this space? This action cannot be undone and you will not be able to use {name} again to create another space.",
     "validationErrorsMessage": "Please fix the following fields before saving:",
     "confirmInputDeleteSpace": "Enter {space} to continue:",
     "noticeSavedTitle": "Settings saved",
@@ -446,7 +446,7 @@
       "label": "Symbol",
       "information": "The default symbol used for this space, usually the token symbol i.e. BAL for Balancer"
     },
-    "strategiesList": "Select up to 8 strategies",
+    "strategiesList": "Select up to {0} strategies",
     "votingPowerIsCumulative": "Voting power is cumulative",
     "addStrategy": "Add strategy",
     "testInPlayground": "Test in playground",
@@ -554,7 +554,7 @@
     "createASpace": "Create a space",
     "registerEnsButton": "Register",
     "supportedEnsTLDs": "Supported domain endings",
-    "helpDocsAndDiscordLinks": "Not sure how to setup your space? Learn more in the {docs} or join Snapshot {discord}.",
+    "helpDocsAndDiscordLinks": "Not sure how to setup your space? Learn more in the {docs} or contact support on {help}.",
     "setSpaceController": "Space controller",
     "setSpaceControllerExists": "The snapshot text-record for this domain has already been set. Choose edit to change it, otherwise you can skip to the next step.",
     "setSpaceControllerInfo": " The space controller is the account that will be able to manage the space settings. Additional space controllers (admins) can be added later.",
@@ -580,8 +580,8 @@
     "domain": {
       "title": "Setup your space domain",
       "ensMessage": " One thing you need before you can create your own space, is an ENS domain on Ethereum mainnet.",
-      "ensMessageTestnet": "You can also {link} - a Goerli testnet playground dedicated to testing before creating your space or proposals on Snapshot",
-      "tryDemo": "try the demo.snapshot.org",
+      "ensMessageTestnet": "You can also {link} - a Sepolia testnet playground dedicated to testing before creating your space or proposals on Snapshot",
+      "tryDemo": "try the testnet.v1.snapshot.org",
       "yourExistingSpaces": "Your existing spaces",
       "invalidEns": "This ENS name is invalid. Usually this is due the use of invalid characters during registration."
     },
@@ -717,13 +717,13 @@
     "label": "Privacy",
     "title": "Select voting privacy",
     "information": "The type of privacy used on proposals. (Enforced on all future proposals)",
-    "any": "Any",
+    "any": "No privacy",
     "none": "None",
     "shutter": {
       "label": "Shutter",
       "description": "Choices are encrypted and only visible once the voting period is over",
       "tooltip": "This proposal has Shutter privacy enabled. All votes will be encrypted until the voting period has ended and the final score is calculated",
-      "url": "https://blog.shutter.network/announcing-shutter-governance-shielded-voting-for-daos/"
+      "url": "https://blog.shutter.network/shielded-voting/"
     }
   },
   "proposalValidation": {
@@ -932,9 +932,11 @@
       }
     }
   },
-  "hal": {
-    "title": "Track proposals for {spaceName}",
-    "text": "Receive notifications every time a new proposal is created or ends"
+  "domino": {
+    "title": "Automations",
+    "information": "Create automated workflows with just a single click using Domino.",
+    "viewMore": "View More",
+    "createCustomWorkflow": "Create custom workflow"
   },
   "timeUnits": {
     "second": "1 second | {n} seconds",
@@ -1010,6 +1012,8 @@
     "resources": "Resources",
     "about": "About",
     "blog": "Blog",
+    "network-support": "Network support",
+    "terms": "Terms and conditions",
     "jobs": "Jobs",
     "faqs": "FAQs",
     "github": "GitHub",

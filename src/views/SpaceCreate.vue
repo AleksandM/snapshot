@@ -5,6 +5,7 @@ import { proposalValidation } from '@/helpers/snapshot';
 import Plugin from '@/plugins/safeSnap';
 import { getInstance } from '@snapshot-labs/lock/plugins/vue3';
 import { clone } from '@snapshot-labs/snapshot.js/src/utils';
+import proposalSchema from '@snapshot-labs/snapshot.js/src/schemas/proposal.json';
 
 const safeSnapPlugin = new Plugin();
 
@@ -14,11 +15,17 @@ enum Step {
   PLUGINS
 }
 
-const BODY_LIMIT_CHARACTERS = 20000;
-
 const props = defineProps<{
   space: ExtendedSpace;
 }>();
+
+const spaceType = computed(() => (props.space.turbo ? 'turbo' : 'default'));
+const bodyCharactersLimit = computed(
+  () =>
+    proposalSchema.definitions.Proposal.properties.body.maxLengthWithSpaceType[
+      spaceType.value
+    ]
+);
 
 useMeta({
   title: {
@@ -47,8 +54,13 @@ const { isGnosisAndNotSpaceNetwork } = useGnosis(props.space);
 const { isSnapshotLoading } = useSnapshot();
 const { apolloQuery, queryLoading } = useApolloQuery();
 const { containsShortUrl } = useShortUrls();
-const { isValid: isValidSpaceSettings, populateForm } =
-  useFormSpaceSettings('settings');
+
+const { isValid: isValidSpaceSettings, populateForm } = useFormSpaceSettings(
+  'settings',
+  {
+    spaceType: spaceType.value
+  }
+);
 
 const {
   form,
@@ -58,7 +70,9 @@ const {
   sourceProposal,
   validationErrors,
   resetForm
-} = useFormSpaceProposal();
+} = useFormSpaceProposal({
+  spaceType: spaceType.value
+});
 
 const isValidAuthor = ref(false);
 const validationLoading = ref(false);
@@ -79,9 +93,9 @@ type DateRange = {
   dateStart: number;
   dateEnd?: number;
 };
+
 function sanitizeDateRange({ dateStart, dateEnd }: DateRange): DateRange {
   const { delay = 0, period = 0 } = props.space?.voting ?? {};
-  console.log('sanitizeDateRange', { dateStart, dateEnd, delay, period });
   const threeDays = 259200;
   const currentTimestamp = Math.floor(Date.now() / 1000);
 
@@ -126,17 +140,38 @@ const isFormValid = computed(() => {
     ? form.value.metadata.plugins.safeSnap.valid
     : true;
 
+  const isOsnapPluginValid = (() => {
+    const safes = form.value.metadata.plugins.oSnap?.safes;
+    if (!safes) {
+      //  not using osnap plugin
+      return true;
+    }
+    if (safes.length && safes.some(safe => !(safe.transactions.length > 0))) {
+      //  using osnap, but some have no transactions
+      return false;
+    }
+    if (
+      safes &&
+      !safes.every(safe => safe.transactions.every(tx => tx.isValid))
+    ) {
+      //  all transactions must be valid
+      return false;
+    }
+    return true;
+  })();
+
   return (
+    !web3.value.authLoading &&
+    isOsnapPluginValid &&
     !isSending.value &&
-    form.value.body.length <= BODY_LIMIT_CHARACTERS &&
+    form.value.body.length <= bodyCharactersLimit.value &&
     dateEnd.value &&
     dateEnd.value > dateStart.value &&
     form.value.snapshot &&
     form.value.choices.length >= 1 &&
     !form.value.choices.some((a, i) => a.text === '' && i === 0) &&
     isValidAuthor.value &&
-    isSafeSnapPluginValid &&
-    !web3.value.authLoading
+    isSafeSnapPluginValid
   );
 });
 
@@ -154,7 +189,7 @@ const stepIsValid = computed(() => {
   if (
     currentStep.value === Step.CONTENT &&
     form.value.name &&
-    form.value.body.length <= BODY_LIMIT_CHARACTERS &&
+    form.value.body.length <= bodyCharactersLimit.value &&
     isValidAuthor.value &&
     !validationErrors.value.name &&
     !validationErrors.value.body &&
@@ -263,6 +298,7 @@ function setSourceProposal(proposal) {
     body: proposal.body,
     discussion: proposal.discussion,
     choices: proposal.choices,
+    labels: proposal.labels,
     start: proposal.start,
     end: proposal.end,
     snapshot: proposal.snapshot,
@@ -368,21 +404,29 @@ function toggleShouldUseOsnap() {
 const legacyOsnap = ref<{
   enabled: boolean;
   selection: boolean;
+  valid: boolean;
 }>({
   selection: false,
-  enabled: false
+  enabled: false,
+  valid: false
 });
 
 // Skip transaction page if osnap is enabled, its not selected to be used, and we are on the voting page
 function shouldSkipTransactions() {
   if (currentStep.value !== Step.VOTING) return false;
-  if (legacyOsnap.value.enabled && !legacyOsnap.value.selection) return true;
+  if (
+    legacyOsnap.value.enabled &&
+    legacyOsnap.value.valid &&
+    !legacyOsnap.value.selection
+  )
+    return true;
   if (hasOsnapPlugin.value && !shouldUseOsnap.value) return true;
   return false;
 }
 
 function handleLegacyOsnapToggle() {
   legacyOsnap.value.selection = !legacyOsnap.value.selection;
+  shouldUseOsnap.value = !shouldUseOsnap.value;
 }
 
 onMounted(async () => {
@@ -390,7 +434,8 @@ onMounted(async () => {
   const umaAddress = props?.space?.plugins?.safeSnap?.safes?.[0]?.umaAddress;
   if (network && umaAddress) {
     // this is how we check if osnap is enabled and valid.
-    legacyOsnap.value.enabled =
+    legacyOsnap.value.enabled = true;
+    legacyOsnap.value.valid =
       (await safeSnapPlugin.validateUmaModule(network, umaAddress)) === 'uma';
   }
   if (sourceProposal.value && !sourceProposalLoaded.value)
@@ -448,7 +493,7 @@ onMounted(() => populateForm(props.space));
         v-if="currentStep === Step.CONTENT"
         :space="space"
         :preview="preview"
-        :body-limit="BODY_LIMIT_CHARACTERS"
+        :body-limit="bodyCharactersLimit"
       />
 
       <!-- Step 2 -->
@@ -475,17 +520,17 @@ onMounted(() => populateForm(props.space));
     </template>
     <template #sidebar-right>
       <BaseBlock class="lg:fixed lg:w-[320px]">
-        <BaseButton
+        <TuneButton
           v-if="currentStep === Step.CONTENT"
           class="mb-2 block w-full"
           @click="preview = !preview"
         >
           {{ preview ? $t('create.edit') : $t('create.preview') }}
-        </BaseButton>
-        <BaseButton v-else class="mb-2 block w-full" @click="previousStep">
+        </TuneButton>
+        <TuneButton v-else class="mb-2 block w-full" @click="previousStep">
           {{ $t('back') }}
-        </BaseButton>
-        <BaseButton
+        </TuneButton>
+        <TuneButton
           v-if="
             currentStep === Step.PLUGINS ||
             (!needsPluginConfigs && currentStep === Step.VOTING) ||
@@ -499,8 +544,8 @@ onMounted(() => populateForm(props.space));
           @click="handleSubmit"
         >
           {{ isEditing ? 'Save changes' : $t('create.publish') }}
-        </BaseButton>
-        <BaseButton
+        </TuneButton>
+        <TuneButton
           v-else
           class="block w-full"
           :loading="validationLoading || isSnapshotLoading"
@@ -522,7 +567,7 @@ onMounted(() => populateForm(props.space));
           @click="web3Account ? nextStep() : (modalAccountOpen = true)"
         >
           {{ web3Account ? $t('create.continue') : $t('connectWallet') }}
-        </BaseButton>
+        </TuneButton>
       </BaseBlock>
     </template>
   </TheLayout>

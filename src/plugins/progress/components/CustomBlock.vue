@@ -176,23 +176,27 @@ onMounted(async () => {
 </script>
 
 <template>
-  <BaseBlock title="Progress" :loading="!loaded">
+  <TuneBlock :loading="!loaded">
+    <template #header>
+      <TuneBlockHeader title="Progress">
+        <BaseButtonIcon class="!p-0">
+          <i-ho-cog
+            v-if="isOwner() && isComplete()"
+            class="text-base"
+            @click="toggleEditMode()"
+          />
+        </BaseButtonIcon>
+      </TuneBlockHeader>
+    </template>
     <div v-if="!isComplete()">{{ $t('progress.comeBack') }}</div>
-    <div v-if="isComplete()" class="flex h-0 flex-row-reverse">
-      <i
-        v-if="isOwner() && isComplete()"
-        class="edit-icon iconfont icongear relative cursor-pointer hover:text-skin-link"
-        style="font-size: 25px; line-height: 25px"
-        @click="toggleEditMode()"
-      ></i>
-    </div>
-    <div v-if="isComplete()" class="flex flex-col">
+
+    <div v-else class="flex flex-col">
       <div>
         <div
           :class="{
             'border-green': isComplete()
           }"
-          class="h-32 mt-2 min-w-[178px] rounded-xl border-2 bg-skin-block-bg p-3 text-base"
+          class="h-32 min-w-[178px] rounded-xl border-2 bg-skin-block-bg p-3 text-base"
         >
           <div class="h-16 flex">
             <div>
@@ -221,11 +225,8 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        <div class="h-[1rem]">
-          <div
-            v-if="steps.length > 0"
-            class="h-full w-[2.3rem] border-r-2 border-green"
-          ></div>
+        <div v-if="steps.length > 0" class="h-[1rem]">
+          <div class="h-full w-[2.3rem] border-r-2 border-green"></div>
         </div>
         <div v-for="(step, index) in steps" :key="step.id">
           <div
@@ -279,7 +280,7 @@ onMounted(async () => {
                   >{{ $t('progress.inProgress') }}
                 </span>
 
-                <BaseButton
+                <TuneButton
                   v-if="step.stepStatus !== 'complete' && editMode"
                   class="w-[7rem]"
                   :disabled="firstIncompleteStepId() !== step.id"
@@ -292,7 +293,7 @@ onMounted(async () => {
                     v-if="thisStepUpdating(step)"
                     class="spinner relative"
                   ></div>
-                </BaseButton>
+                </TuneButton>
 
                 <span
                   v-if="
@@ -326,18 +327,18 @@ onMounted(async () => {
             :placeholder="[$t('progress.description')]"
             class="input h-full w-full rounded-3xl border border-skin-border px-4 py-3 text-left focus-within:!border-skin-link hover:border-skin-text"
           />
-          <BaseButton
+          <TuneButton
             v-if="isAdmin || isOwner"
             class="button button--primary ml-2 mt-2 w-full px-[24px] hover:brightness-95"
             @click="createNewStep()"
           >
             <span v-if="!addIsLoading">{{ $t('progress.add') }}</span>
             <div v-if="addIsLoading" class="spinner relative"></div>
-          </BaseButton>
+          </TuneButton>
         </div>
       </div>
     </div>
-  </BaseBlock>
+  </TuneBlock>
   <BaseModal :open="closeModal" @close="closeEvent">
     <template #header>
       <h3>{{ $t('progress.deleteStep') }}</h3>
@@ -348,17 +349,17 @@ onMounted(async () => {
     <div
       class="mb-2 mt-3 flex content-center items-center justify-center text-center"
     >
-      <BaseButton
+      <TuneButton
         class="w-[6rem] !bg-primary !text-white"
         :loading="loading"
         @click="deleteStep"
       >
         <span v-if="!deleteIsLoading">{{ $t('progress.delete') }}</span>
         <div v-if="deleteIsLoading" class="spinner relative"></div>
-      </BaseButton>
-      <BaseButton :disabled="loading" class="ml-2" @click="closeEvent">
+      </TuneButton>
+      <TuneButton :disabled="loading" class="ml-2" @click="closeEvent">
         {{ $t('progress.cancel') }}
-      </BaseButton>
+      </TuneButton>
     </div>
   </BaseModal>
 </template>

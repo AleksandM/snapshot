@@ -15,6 +15,9 @@ const hasDelegationStrategy = computed(() => {
 });
 
 const hasDelegatesSettings = computed(() => {
+  // delegation dashboard enabled on v2 for these spaces
+  const ignoreSpaces = ['ens.eth', 'gitcoindao.eth', 'uniswapgovernance.eth'];
+  if (ignoreSpaces.includes(props.space.id)) return false;
   return props.space.delegationPortal?.delegationType;
 });
 
@@ -31,7 +34,7 @@ const isLegacySpace = computed(() => {
       </BaseSidebarNavigationItem>
     </router-link>
     <router-link
-      v-if="hasDelegationStrategy"
+      v-if="hasDelegationStrategy && !hasDelegatesSettings"
       v-slot="{ isExactActive }"
       :to="{ name: 'delegate', params: { key: space.id } }"
     >
